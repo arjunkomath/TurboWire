@@ -2,7 +2,7 @@ use axum::Json;
 use axum::extract::State;
 use axum::extract::connect_info::ConnectInfo;
 use axum::http::{HeaderMap, StatusCode};
-use axum::routing::post;
+use axum::routing::{get, post};
 use axum::{
     Router,
     body::Bytes,
@@ -15,6 +15,7 @@ use dotenv::dotenv;
 use futures::SinkExt;
 use futures::stream::StreamExt;
 use serde::Deserialize;
+use serde_json::json;
 use std::collections::HashMap;
 use std::env;
 use std::net::SocketAddr;
@@ -61,10 +62,10 @@ impl AppState {
         println!(">>> Added client: {addr}");
     }
 
-    // fn remove_client(&mut self, addr: &SocketAddr) {
-    //     self.clients.remove(addr);
-    //     println!(">>> Removed client: {addr}");
-    // }
+    fn remove_client(&mut self, addr: &SocketAddr) {
+        self.clients.remove(addr);
+        println!(">>> Removed client: {addr}");
+    }
 
     async fn broadcast(&self, message: String) {
         for (addr, sender) in &self.clients {
@@ -75,13 +76,19 @@ impl AppState {
     }
 
     async fn broadcast_to_room(&self, room: String, message: String) {
-        if let Some(clients) = self.rooms.get(&room) {
-            for addr in clients {
-                if let Some(sender) = self.clients.get(addr) {
-                    if let Err(e) = sender.unbounded_send(Message::Text(message.clone().into())) {
-                        println!("Failed to send message to {addr}: {e}");
-                    }
-                }
+        let clients = match self.rooms.get(&room) {
+            Some(clients) => clients,
+            None => return,
+        };
+
+        for addr in clients {
+            let sender = match self.clients.get(addr) {
+                Some(sender) => sender,
+                None => continue,
+            };
+
+            if let Err(e) = sender.unbounded_send(Message::Text(message.clone().into())) {
+                println!("Failed to send message to {addr}: {e}");
             }
         }
     }
@@ -107,6 +114,8 @@ async fn main() {
     let state = Arc::new(Mutex::new(AppState::default()));
 
     let app = Router::new()
+        .route("/", get(root_handler))
+        .route("/health", get(health_handler))
         .route("/wire", any(ws_handler))
         .route("/broadcast", post(broadcast_handler))
         .with_state(state)
@@ -125,6 +134,17 @@ async fn main() {
     )
     .await
     .unwrap();
+}
+
+async fn root_handler() -> impl IntoResponse {
+    (
+        StatusCode::OK,
+        Json(json!({ "server": "TurboWire", "version": env!("CARGO_PKG_VERSION") })),
+    )
+}
+
+async fn health_handler() -> impl IntoResponse {
+    (StatusCode::OK, Json(json!({ "status": "ok" })))
 }
 
 /// The handler for the HTTP request (this gets called when the HTTP request lands at the start
@@ -180,9 +200,13 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr, state: Arc<Mutex<
         }
     });
 
+    let state_for_receive = Arc::clone(&state);
     let mut receive_task = tokio::spawn(async move {
         while let Some(Ok(msg)) = receiver.next().await {
-            if process_message(msg, who, &state).await.is_break() {
+            if process_message(msg, who, &state_for_receive)
+                .await
+                .is_break()
+            {
                 break;
             }
         }
@@ -194,14 +218,19 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr, state: Arc<Mutex<
         _ = (&mut receive_task) => send_task.abort(),
     }
 
-    // let mut state = state.lock().await;
-    // state.remove_client(&who);
-    // // Also clean up from any rooms they were in
-    // for (room, clients) in state.rooms.iter_mut() {
-    //     if clients.contains(&who) {
-    //         state.leave_room(room.clone(), who);
-    //     }
-    // }
+    let mut state = state.lock().await;
+    state.remove_client(&who);
+
+    let rooms_to_leave: Vec<String> = state
+        .rooms
+        .iter()
+        .filter(|(_, clients)| clients.contains(&who))
+        .map(|(room, _)| room.clone())
+        .collect();
+
+    for room in rooms_to_leave {
+        state.leave_room(room, who);
+    }
 
     // returning from the handler closes the websocket connection
     println!("Websocket context {who} destroyed");
@@ -273,7 +302,11 @@ async fn broadcast_handler(
     });
 
     if api_key != broadcast_key {
-        return (StatusCode::UNAUTHORIZED, "Invalid API key").into_response();
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({"message": "Invalid API key"})),
+        )
+            .into_response();
     }
 
     let state = state.lock().await;
@@ -283,5 +316,9 @@ async fn broadcast_handler(
         state.broadcast(payload.message).await;
     }
 
-    (StatusCode::OK, "Message broadcasted").into_response()
+    (
+        StatusCode::OK,
+        Json(json!({"message": "Message broadcasted"})),
+    )
+        .into_response()
 }
