@@ -55,14 +55,19 @@ pub async fn ws_handler(
         return (StatusCode::SERVICE_UNAVAILABLE, "Connection limit reached").into_response();
     }
 
-    state.lock().await.join_room(params.room, addr);
+    state.lock().await.join_room(params.room.clone(), addr);
 
     println!(">>> {addr} connected.");
-    ws.on_upgrade(move |socket| handle_socket(socket, addr, state))
+    ws.on_upgrade(move |socket| handle_socket(socket, addr, state, params.room))
 }
 
 /// Actual websocket state machine (one will be spawned per connection)
-async fn handle_socket(mut socket: WebSocket, who: SocketAddr, state: Arc<Mutex<AppState>>) {
+async fn handle_socket(
+    mut socket: WebSocket,
+    who: SocketAddr,
+    state: Arc<Mutex<AppState>>,
+    room: String,
+) {
     // send a ping (unsupported by some browsers) just to kick things off and get a response
     if socket
         .send(Message::Ping(Bytes::from_static(&[1])))
@@ -94,9 +99,13 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr, state: Arc<Mutex<
         }
     });
 
+    let room_for_message = room.clone();
     let mut receive_task = tokio::spawn(async move {
         while let Some(Ok(msg)) = receiver.next().await {
-            if process_message(msg, who).await.is_break() {
+            if process_message(msg, who, room_for_message.clone())
+                .await
+                .is_break()
+            {
                 break;
             }
         }
@@ -110,26 +119,36 @@ async fn handle_socket(mut socket: WebSocket, who: SocketAddr, state: Arc<Mutex<
 
     let mut state = state.lock().await;
     state.remove_client(&who);
-
-    let rooms_to_leave: Vec<String> = state
-        .rooms
-        .iter()
-        .filter(|(_, clients)| clients.contains(&who))
-        .map(|(room, _)| room.clone())
-        .collect();
-
-    for room in rooms_to_leave {
-        state.leave_room(room, who);
-    }
+    state.leave_room(room, who);
 
     // returning from the handler closes the websocket connection
     println!("Websocket context {who} destroyed");
 }
 
-async fn process_message(msg: Message, who: SocketAddr) -> ControlFlow<(), ()> {
+async fn process_message(msg: Message, who: SocketAddr, room: String) -> ControlFlow<(), ()> {
     match msg {
         Message::Text(t) => {
-            println!(">>> {who} sent str: {t:?}");
+            println!(">>> {who} sent string: {t:?}");
+
+            match env::var("MESSAGE_WEBHOOK_URL") {
+                Ok(webhook_url) => {
+                    println!("Sending message to webhook: {webhook_url}");
+                    let client = reqwest::Client::new();
+
+                    let _ = client
+                        .post(webhook_url)
+                        .json(&json!({
+                            "message": t.to_string(),
+                            "room": room,
+                            "sender": who.to_string(),
+                        }))
+                        .send()
+                        .await;
+                }
+                _ => {
+                    println!("No webhook URL set");
+                }
+            }
         }
         Message::Binary(d) => {
             println!(">>> {} sent {} bytes: {:?}", who, d.len(), d);
