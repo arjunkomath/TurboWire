@@ -1,0 +1,25 @@
+{
+  "name": "@turbowire/serverless",
+  "version": "0.1.0",
+  "type": "module",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "format": "biome format --write src/",
+    "lint": "biome check --apply src/",
+    "check": "biome check src/"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "1.5.3",
+    "@types/node": "^20.11.24",
+    "typescript": "^5.3.3"
+  }
+}
