@@ -9,7 +9,7 @@ use std::env;
 
 use crate::shared::TokenRequest;
 
-pub async fn create_connection_token(
+pub async fn create_signed_wire(
     headers: HeaderMap,
     Json(payload): Json<TokenRequest>,
 ) -> impl IntoResponse {
@@ -52,7 +52,7 @@ pub async fn create_connection_token(
     (
         StatusCode::OK,
         Json(json!({
-            "signed_url": format!("{}/wire?room={}&signature={}",
+            "url": format!("{}?room={}&signature={}",
                 base_url,
                 payload.room,
                 signature

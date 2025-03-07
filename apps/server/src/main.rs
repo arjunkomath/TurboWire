@@ -2,9 +2,9 @@ use anyhow::Result;
 use axum::routing::{get, post};
 use axum::{Router, routing::any};
 use dotenv::dotenv;
-use routes::base::{health_handler, root_handler};
 use routes::broadcast::broadcast_handler;
-use routes::token::create_connection_token;
+use routes::health::health_handler;
+use routes::sign::create_signed_wire;
 use routes::wire::ws_handler;
 use shared::AppState;
 use std::env;
@@ -47,11 +47,13 @@ async fn main() -> Result<()> {
         .allow_headers(Any);
 
     let app = Router::new()
-        .route("/", get(root_handler))
-        .route("/health", get(health_handler))
-        .route("/wire", any(ws_handler))
-        .route("/client-token", post(create_connection_token))
+        // Client endpoints
+        .route("/", any(ws_handler))
+        // Serverless endpoints
+        .route("/sign-wire", post(create_signed_wire))
         .route("/broadcast", post(broadcast_handler))
+        // Health check
+        .route("/health", get(health_handler))
         .with_state(state)
         .layer(cors)
         .layer(

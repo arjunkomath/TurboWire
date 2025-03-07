@@ -47,7 +47,7 @@ export class TurboWireSigner {
       throw new Error('Room is required');
     }
 
-    return fetch(`${this.serverUrl}/client-token`, {
+    return fetch(`${this.serverUrl}/sign-wire`, {
       method: 'POST',
       body: JSON.stringify({ room }),
       headers: {
@@ -57,7 +57,7 @@ export class TurboWireSigner {
     })
       .then((res) => res.json())
       .then((data) => {
-        return data.signed_url;
+        return data.url;
       });
   }
 }
