@@ -1,3 +1,4 @@
+use anyhow::Result;
 use axum::Json;
 use axum::extract::State;
 use axum::extract::connect_info::ConnectInfo;
@@ -95,7 +96,7 @@ impl AppState {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
     dotenv().ok();
 
     if env::var("BROADCAST_KEY").is_err() {
@@ -124,27 +125,33 @@ async fn main() {
                 .make_span_with(DefaultMakeSpan::default().include_headers(true)),
         );
 
-    let listener = tokio::net::TcpListener::bind("[::]:3000").await.unwrap();
+    let host = env::var("HOST").unwrap_or_else(|_| "[::]".to_string());
+    let port = env::var("PORT").unwrap_or_else(|_| "8080".to_string());
+    let listener = tokio::net::TcpListener::bind(format!("{}:{}", host, port)).await?;
 
     tracing::debug!("listening on {}", listener.local_addr().unwrap());
+
+    let connection_limit = env::var("CONNECTION_LIMIT").unwrap_or_else(|_| "100".to_string());
+    tracing::debug!("connection limit set to: {}", connection_limit);
 
     axum::serve(
         listener,
         app.into_make_service_with_connect_info::<SocketAddr>(),
     )
-    .await
-    .unwrap();
+    .await?;
+
+    Ok(())
 }
 
 async fn root_handler() -> impl IntoResponse {
     (
         StatusCode::OK,
-        Json(json!({ "server": "TurboWire", "version": env!("CARGO_PKG_VERSION") })),
+        Json(json!({ "server": "TurboWire", "version": env!("CARGO_PKG_VERSION")})),
     )
 }
 
 async fn health_handler() -> impl IntoResponse {
-    (StatusCode::OK, Json(json!({ "status": "ok" })))
+    (StatusCode::OK, Json(json!({ "status": "all good!" })))
 }
 
 /// The handler for the HTTP request (this gets called when the HTTP request lands at the start
@@ -158,6 +165,15 @@ async fn ws_handler(
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     State(state): State<Arc<Mutex<AppState>>>,
 ) -> impl IntoResponse {
+    let connection_limit: usize = env::var("CONNECTION_LIMIT")
+        .unwrap_or_else(|_| "100".to_string())
+        .parse()
+        .unwrap_or(100);
+
+    if state.lock().await.clients.len() >= connection_limit {
+        return (StatusCode::SERVICE_UNAVAILABLE, "Connection limit reached").into_response();
+    }
+
     let user_agent = if let Some(TypedHeader(user_agent)) = user_agent {
         user_agent.to_string()
     } else {
