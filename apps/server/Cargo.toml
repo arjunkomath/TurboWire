@@ -6,14 +6,14 @@ edition = "2024"
 [dependencies]
 anyhow = "1.0.97"
 axum = { version = "0.8.1", features = ["ws"] }
-axum-extra = { version = "0.10.0", features = ["typed-header"] }
+base64 = "0.22.1"
 dotenv = "0.15.0"
 futures = "0.3.31"
-headers = "0.4.0"
+hmac = "0.12.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.140"
+sha2 = "0.10.8"
 tokio = { version = "1.0", features = ["full"] }
-tokio-tungstenite = "0.26.0"
-tower-http = { version = "0.6.1", features = ["fs", "trace"] }
+tower-http = { version = "0.6.1", features = ["fs", "trace", "cors"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
