@@ -65,8 +65,13 @@ async fn main() -> Result<()> {
 
     tracing::debug!("listening on {}", listener.local_addr().unwrap());
 
-    let connection_limit = env::var("CONNECTION_LIMIT").unwrap_or_else(|_| "1000".to_string());
-    tracing::debug!("connection limit set to: {}", connection_limit);
+    if let Ok(limit) = env::var("CONNECTION_LIMIT") {
+        tracing::debug!("connection limit set to: {}", limit);
+    }
+
+    if let Ok(url) = env::var("MESSAGE_WEBHOOK_URL") {
+        tracing::debug!("message webhook url set to: {}", url);
+    }
 
     axum::serve(
         listener,
