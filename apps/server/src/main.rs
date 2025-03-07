@@ -4,7 +4,6 @@ use axum::{Router, routing::any};
 use dotenv::dotenv;
 use routes::broadcast::broadcast_handler;
 use routes::health::health_handler;
-use routes::sign::create_signed_wire;
 use routes::wire::ws_handler;
 use shared::AppState;
 use std::env;
@@ -50,7 +49,6 @@ async fn main() -> Result<()> {
         // Client endpoints
         .route("/", any(ws_handler))
         // Serverless endpoints
-        .route("/sign-wire", post(create_signed_wire))
         .route("/broadcast", post(broadcast_handler))
         // Health check
         .route("/health", get(health_handler))
@@ -67,7 +65,7 @@ async fn main() -> Result<()> {
 
     tracing::debug!("listening on {}", listener.local_addr().unwrap());
 
-    let connection_limit = env::var("CONNECTION_LIMIT").unwrap_or_else(|_| "100".to_string());
+    let connection_limit = env::var("CONNECTION_LIMIT").unwrap_or_else(|_| "1000".to_string());
     tracing::debug!("connection limit set to: {}", connection_limit);
 
     axum::serve(

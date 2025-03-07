@@ -65,11 +65,6 @@ pub struct BroadcastMessage {
 }
 
 #[derive(Deserialize)]
-pub struct TokenRequest {
-    pub room: String,
-}
-
-#[derive(Deserialize)]
 pub struct WsConnectionParams {
     pub room: String,
     pub signature: String,

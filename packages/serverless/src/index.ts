@@ -1,3 +1,5 @@
+import { createHmac } from "node:crypto";
+
 export class TurboWireBroadcaster {
   private serverUrl: string;
   private apiKey: string;
@@ -27,37 +29,30 @@ export class TurboWireBroadcaster {
 }
 
 export class TurboWireSigner {
-  private serverUrl: string;
+  private wireUrl: string;
   private signingKey: string;
 
-  constructor(serverUrl: string, signingKey: string) {
-    if (!serverUrl) {
-      throw new Error('serverUrl is required');
+  constructor(wireUrl: string, signingKey: string) {
+    if (!wireUrl) {
+      throw new Error('wireUrl is required');
     }
     if (!signingKey) {
       throw new Error('signingKey is required');
     }
 
-    this.serverUrl = serverUrl;
+    this.wireUrl = wireUrl;
     this.signingKey = signingKey;
   }
 
-  async getSignedWire(room: string): Promise<string> {
+  getSignedWire(room: string): string {
     if (!room) {
       throw new Error('Room is required');
     }
 
-    return fetch(`${this.serverUrl}/sign-wire`, {
-      method: 'POST',
-      body: JSON.stringify({ room }),
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': this.signingKey,
-      },
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        return data.url;
-      });
+    const hmac = createHmac('sha256', this.signingKey);
+    hmac.update(room);
+    const signature = hmac.digest('base64url');
+
+    return `${this.wireUrl}?room=${room}&signature=${signature}`;
   }
 }

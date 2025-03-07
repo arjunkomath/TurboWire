@@ -7,7 +7,7 @@ use axum::{
     extract::ws::{Message, WebSocket, WebSocketUpgrade},
     response::IntoResponse,
 };
-use base64::{Engine as _, engine::general_purpose::URL_SAFE};
+use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use futures::SinkExt;
 use futures::StreamExt;
 use hmac::{Hmac, Mac};
@@ -36,7 +36,7 @@ pub async fn ws_handler(
     let mut mac = Hmac::<Sha256>::new_from_slice(signing_key.as_bytes())
         .expect("HMAC can take key of any size");
     mac.update(params.room.as_bytes());
-    let expected_signature = URL_SAFE.encode(mac.finalize().into_bytes());
+    let expected_signature = URL_SAFE_NO_PAD.encode(mac.finalize().into_bytes());
 
     if params.signature != expected_signature {
         return (
@@ -47,9 +47,9 @@ pub async fn ws_handler(
     }
 
     let connection_limit: usize = env::var("CONNECTION_LIMIT")
-        .unwrap_or_else(|_| "100".to_string())
+        .unwrap_or_else(|_| "1000".to_string())
         .parse()
-        .unwrap_or(100);
+        .unwrap_or(1000);
 
     if state.lock().await.clients.len() >= connection_limit {
         return (StatusCode::SERVICE_UNAVAILABLE, "Connection limit reached").into_response();
