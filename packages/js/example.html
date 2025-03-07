@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TurboWire Client Example</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            display: grid;
+            gap: 20px;
+        }
+        .card {
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .button {
+            background: #0070f3;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .button:disabled {
+            background: #ccc;
+        }
+        input[type="text"] {
+            padding: 8px;
+            margin-right: 8px;
+            width: 250px;
+        }
+        #log {
+            background: #f7f7f7;
+            padding: 10px;
+            border-radius: 4px;
+            min-height: 200px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h2>Connection</h2>
+            <input type="text" id="wireUrl" value="ws://localhost:8080/wire" placeholder="WebSocket Server URL">
+            <button id="connectBtn" class="button">Connect</button>
+            <button id="disconnectBtn" class="button" disabled>Disconnect</button>
+        </div>
+
+        <div class="card">
+            <h2>Log</h2>
+            <div id="log"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { TurboWire } from './dist/index.js';
+
+        let client = null;
+        let disconnect = null;
+
+        function log(message) {
+            const logEl = document.getElementById('log');
+            logEl.innerHTML += `<div>${new Date().toLocaleTimeString()} - ${message}</div>`;
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        document.getElementById('connectBtn').addEventListener('click', async () => {
+            const wireUrl = document.getElementById('wireUrl').value;
+            client = new TurboWire(wireUrl, { debug: true });
+            
+            try {
+                const result = await client.connect(
+                    (message) => {
+                        log(`Received message: ${message}`);
+                    },
+                    (error) => {
+                        log(`Connection error: ${error.message}`);
+                    }
+                );
+                disconnect = result.disconnect;
+                log('Connected to server');
+                document.getElementById('connectBtn').disabled = true;
+                document.getElementById('disconnectBtn').disabled = false;
+            } catch (error) {
+                log(`Connection error: ${error.message}`);
+            }
+        });
+
+        document.getElementById('disconnectBtn').addEventListener('click', () => {
+            if (disconnect) {
+                disconnect();
+                log('Disconnected from server');
+                document.getElementById('connectBtn').disabled = false;
+                document.getElementById('disconnectBtn').disabled = true;
+            }
+        });
+    </script>
+</body>
+</html> 
