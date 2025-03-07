@@ -47,7 +47,7 @@ pub async fn create_connection_token(
     mac.update(payload.room.as_bytes());
     let signature = URL_SAFE.encode(mac.finalize().into_bytes());
 
-    let base_url = env::var("BASE_URL").unwrap_or("ws://localhost:8080".to_string());
+    let base_url = env::var("WIRE_BASE_URL").unwrap_or("ws://localhost:8080".to_string());
 
     (
         StatusCode::OK,
