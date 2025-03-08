@@ -24,6 +24,8 @@ docker run -d -p 8080:8080 arjunkomath/turbowire-server:latest
 ```
 You can find the required environment variables in the `.env.sample` file.
 
+You can read more about the server in the [server README](./apps/server/README.md).
+
 ### Your Project (Client)
 
 You can use the client in your project by installing the package using npm or yarn.
