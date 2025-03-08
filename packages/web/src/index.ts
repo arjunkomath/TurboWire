@@ -2,18 +2,6 @@ export type TurboWireOptions = {
   debug?: boolean;
 };
 
-export type TurboWireConnection = {
-  /**
-   * Disconnect from the TurboWire server
-   */
-  disconnect: () => void;
-  /**
-   * Send a message to the TurboWire server
-   * @param message - The message to send
-   */
-  send: (message: string) => void;
-};
-
 export class TurboWire {
   private ws: WebSocket | null = null;
   private wireUrl: string;
@@ -36,12 +24,8 @@ export class TurboWire {
    * Connect to the TurboWire server via a WebSocket
    * @param onMessage - The callback for when a message is received from the server
    * @param onError - The callback for when an error occurs
-   * @returns A connection object with disconnect and send methods
    */
-  connect(
-    onMessage: (message: string) => void,
-    onError?: (error: Event) => void
-  ): TurboWireConnection {
+  connect(onMessage: (message: string) => void, onError?: (error: Event) => void) {
     if (this.debug) {
       console.log('Connecting to TurboWire server', this.wireUrl);
     }
@@ -81,18 +65,13 @@ export class TurboWire {
         );
       }
     };
-
-    return {
-      disconnect: () => {
-        this.disconnect();
-      },
-      send: (message: string) => {
-        this.send(message);
-      },
-    };
   }
 
-  private send(message: string): void {
+  /**
+   * Send a message to the TurboWire server
+   * @param message - The message to send
+   */
+  send(message: string): void {
     if (this.ws) {
       if (this.debug) {
         console.log('Sending message to TurboWire server', message);
@@ -103,7 +82,10 @@ export class TurboWire {
     }
   }
 
-  private disconnect(): void {
+  /**
+   * Disconnect from the TurboWire server
+   */
+  disconnect(): void {
     if (this.ws) {
       if (this.debug) {
         console.log('Disconnecting from TurboWire server');
