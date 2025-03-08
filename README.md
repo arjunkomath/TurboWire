@@ -10,7 +10,7 @@ The project consists of three parts:
 - `@turbowire/web`: A JavaScript client that runs in the browser and connects to TurboWire server.
 - `@turbowire/serverless`: A Node.JS library that lets you create signed WebSocket URLs and broadcast message to rooms.
 
-![image](https://github.com/user-attachments/assets/2e3f2cbb-95e0-42da-ac32-99794923436a)
+![CleanShot 2025-03-08 at 21 55 18@2x](https://github.com/user-attachments/assets/f2198629-0dce-4d5b-afa0-5bf7ffddc91e)
 
 ## Getting Started
 
