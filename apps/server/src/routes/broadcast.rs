@@ -15,7 +15,7 @@ pub async fn broadcast_handler(
     Json(payload): Json<BroadcastMessage>,
 ) -> impl IntoResponse {
     let api_key = headers
-        .get("x-api-key")
+        .get("x-broadcast-key")
         .and_then(|v| v.to_str().ok())
         .unwrap_or("");
 
