@@ -25,5 +25,8 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/arjunkomath/TurboWire.git"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
