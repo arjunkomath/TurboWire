@@ -78,7 +78,7 @@
             client = new TurboWire(wireUrl, { debug: true });
             
             try {
-                const result = await client.connect(
+                const result = client.connect(
                     (message) => {
                         log(`Received message: ${message}`);
                     },

@@ -1,4 +1,29 @@
-import { createHmac } from "node:crypto";
+import { createHmac } from 'node:crypto';
+
+export type TurboWireOptions = {
+  /**
+   * Optional override for the broadcast endpoint
+   * Useful if you've set up a private endpoint for server-to-server communication
+   */
+  broadcastUrl?: string;
+  /**
+   * Optional override for the wire endpoint
+   */
+  wireUrl?: string;
+  /**
+   * The broadcast key for the TurboWire server
+   */
+  broadcastKey?: string;
+  /**
+   * The signing key for the TurboWire server
+   */
+  signingKey?: string;
+  /**
+   * Whether to use secure (https) connections
+   * Defaults to true
+   */
+  secure?: boolean;
+};
 
 export class TurboWireHub {
   private domain: string;
@@ -8,11 +33,11 @@ export class TurboWireHub {
   private broadcastUrl: string;
   private wireUrl: string;
 
-  constructor(domain: string, options?: {
-    broadcastKey?: string;
-    signingKey?: string;
-    secure?: boolean;
-  }) {
+  /**
+   * @param domain - The domain of the TurboWire server
+   * @param options - The options for the TurboWire server
+   */
+  constructor(domain: string, options?: TurboWireOptions) {
     if (!domain) {
       throw new Error('domain is required');
     }
@@ -22,20 +47,31 @@ export class TurboWireHub {
     const secure = options?.secure ?? true;
 
     if (!broadcastKey) {
-      throw new Error('TurboWire broadcast key is required, either as an option or as the TURBOWIRE_BROADCAST_KEY environment variable');
+      throw new Error(
+        'TurboWire broadcast key is required, either as an option or as the TURBOWIRE_BROADCAST_KEY environment variable'
+      );
     }
     if (!signingKey) {
-      throw new Error('TurboWire signing key is required, either as an option or as the TURBOWIRE_SIGNING_KEY environment variable');
+      throw new Error(
+        'TurboWire signing key is required, either as an option or as the TURBOWIRE_SIGNING_KEY environment variable'
+      );
     }
 
     this.domain = domain;
     this.broadcastKey = broadcastKey;
     this.signingKey = signingKey;
 
-    this.broadcastUrl = `${secure ? 'https' : 'http'}://${this.domain}/broadcast`;
-    this.wireUrl = `${secure ? 'wss' : 'ws'}://${this.domain}`;
+    this.broadcastUrl =
+      options?.broadcastUrl ?? `${secure ? 'https' : 'http'}://${this.domain}/broadcast`;
+    this.wireUrl = options?.wireUrl ?? `${secure ? 'wss' : 'ws'}://${this.domain}`;
   }
 
+  /**
+   * Broadcast a message to a room
+   * @param room - The room to broadcast the message to
+   * @param message - The message to broadcast
+   * @returns The response from the TurboWire server
+   */
   async broadcast(room: string, message: string): Promise<Response> {
     return fetch(this.broadcastUrl, {
       method: 'POST',
@@ -52,6 +88,14 @@ export class TurboWireHub {
     });
   }
 
+  /**
+   * Get a signed wire URL for a room
+   * @param room - The room to get the wire URL for
+   * @returns The signed wire URL
+   *
+   * This URL can be used to connect to the room via a WebSocket, you can create a signed URL
+   * and pass it to the client to connect to the room.
+   */
   getSignedWire(room: string): string {
     if (!room) {
       throw new Error('Room is required');

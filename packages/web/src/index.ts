@@ -3,7 +3,14 @@ export type TurboWireOptions = {
 };
 
 export type TurboWireConnection = {
+  /**
+   * Disconnect from the TurboWire server
+   */
   disconnect: () => void;
+  /**
+   * Send a message to the TurboWire server
+   * @param message - The message to send
+   */
   send: (message: string) => void;
 };
 
@@ -12,6 +19,10 @@ export class TurboWire {
   private wireUrl: string;
   private debug: boolean;
 
+  /**
+   * @param wireUrl - The URL of the TurboWire server
+   * @param options - The options for the TurboWire connection
+   */
   constructor(wireUrl: string, options?: TurboWireOptions) {
     this.wireUrl = wireUrl;
     this.debug = options?.debug || false;
@@ -21,6 +32,12 @@ export class TurboWire {
     }
   }
 
+  /**
+   * Connect to the TurboWire server via a WebSocket
+   * @param onMessage - The callback for when a message is received from the server
+   * @param onError - The callback for when an error occurs
+   * @returns A connection object with disconnect and send methods
+   */
   connect(
     onMessage: (message: string) => void,
     onError?: (error: Event) => void

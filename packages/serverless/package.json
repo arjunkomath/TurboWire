@@ -13,9 +13,7 @@
   "files": ["dist"],
   "scripts": {
     "build": "tsc",
-    "format": "biome format --write src/",
-    "lint": "biome check --apply src/",
-    "check": "biome check src/"
+    "lint": "biome check src/"
   },
   "devDependencies": {
     "@biomejs/biome": "1.5.3",
