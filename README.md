@@ -12,7 +12,7 @@ The project consists of three parts:
 
 ## Getting Started
 
-### Server
+### TurboWire Server
 
 You can deploy the server using the provided Dockerfile or use the pre-built image from Docker Hub.
 
@@ -22,7 +22,7 @@ docker run -d -p 8080:8080 arjunkomath/turbowire-server:latest
 ```
 You can find the required environment variables in the `.env.sample` file.
 
-### Client
+### Your Project (Client)
 
 You can use the client in your project by installing the package using npm or yarn.
 
@@ -30,7 +30,7 @@ You can use the client in your project by installing the package using npm or ya
 npm install @turbowire/web
 ```
 
-### Serverless
+### Your Project (Serverless)
 
 You can use the serverless package to create signed WebSocket URLs and broadcast messages to rooms.
 
