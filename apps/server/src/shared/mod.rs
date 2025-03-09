@@ -21,6 +21,11 @@ impl AppState {
     pub fn leave_room(&mut self, room: String, addr: SocketAddr) {
         if let Some(clients) = self.rooms.get_mut(&room) {
             clients.retain(|a| a != &addr);
+
+            if clients.is_empty() {
+                println!("Room {room} is empty, deleting...");
+                self.rooms.remove(&room);
+            }
         }
         println!(">>> {addr} left room: {room}");
     }
