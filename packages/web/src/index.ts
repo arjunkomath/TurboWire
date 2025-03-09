@@ -1,10 +1,21 @@
 export type TurboWireOptions = {
   debug?: boolean;
+  maxRetries?: number;
+  retryInterval?: number;
 };
 
 export class TurboWire {
   private ws: WebSocket | null = null;
+
   private wireUrl: string;
+  private messageCallback?: (message: string) => void;
+  private errorCallback?: (error: Event) => void;
+
+  private retryCount = 0;
+  private maxRetries: number;
+  private retryInterval: number;
+  private retryTimeout?: number;
+
   private debug: boolean;
 
   /**
@@ -14,6 +25,8 @@ export class TurboWire {
   constructor(wireUrl: string, options?: TurboWireOptions) {
     this.wireUrl = wireUrl;
     this.debug = options?.debug || false;
+    this.maxRetries = options?.maxRetries ?? 10;
+    this.retryInterval = options?.retryInterval ?? 3000;
 
     if (this.debug) {
       console.log('Initializing TurboWire with URL', this.wireUrl);
@@ -26,32 +39,39 @@ export class TurboWire {
    * @param onError - The callback for when an error occurs
    */
   connect(onMessage: (message: string) => void, onError?: (error: Event) => void) {
+    this.messageCallback = onMessage;
+    this.errorCallback = onError;
+
+    this.establishConnection();
+  }
+
+  private establishConnection(): void {
     if (this.debug) {
-      console.log('Connecting to TurboWire server', this.wireUrl);
+      console.log(`Connecting to TurboWire server (attempt ${this.retryCount + 1})`);
     }
+
     this.ws = new WebSocket(this.wireUrl);
 
     this.ws.onerror = (event: Event) => {
       if (this.debug) {
         console.error('Error on TurboWire connection', event);
       }
-      onError?.(event);
+      this.errorCallback?.(event);
     };
 
     this.ws.onopen = () => {
       if (this.debug) {
         console.log('Connected to TurboWire server');
       }
+      this.retryCount = 0;
 
       if (this.ws) {
         this.ws.onmessage = (event: MessageEvent) => {
           if (this.debug) {
             console.log('Received message from TurboWire server', event.data);
           }
-          onMessage(event.data);
+          this.messageCallback?.(event.data);
         };
-      } else {
-        throw new Error('WebSocket is not connected');
       }
     };
 
@@ -63,6 +83,18 @@ export class TurboWire {
           `Reason: ${event.reason || 'No reason provided'}`,
           `Clean: ${event.wasClean}`
         );
+      }
+
+      if (!event.wasClean && this.retryCount < this.maxRetries) {
+        this.retryCount++;
+        if (this.debug) {
+          console.log(
+            `Attempting reconnection in ${this.retryInterval}ms (attempt ${this.retryCount}/${this.maxRetries})`
+          );
+        }
+        this.retryTimeout = setTimeout(() => {
+          this.establishConnection();
+        }, this.retryInterval);
       }
     };
   }
@@ -86,6 +118,11 @@ export class TurboWire {
    * Disconnect from the TurboWire server
    */
   disconnect(): void {
+    if (this.retryTimeout) {
+      clearTimeout(this.retryTimeout);
+      this.retryTimeout = undefined;
+    }
+
     if (this.ws) {
       if (this.debug) {
         console.log('Disconnecting from TurboWire server');
@@ -93,5 +130,7 @@ export class TurboWire {
       this.ws.close();
       this.ws = null;
     }
+
+    this.retryCount = 0;
   }
 }
