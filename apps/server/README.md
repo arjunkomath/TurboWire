@@ -14,7 +14,6 @@ cargo run
 | -------- | -------- |
 | `CONNECTION_LIMIT` | The maximum number of connections to allow |
 | `MESSAGE_WEBHOOK_URL` | The URL to send messages to |
-| `WIRE_BASE_URL` | The base URL of the Wire server, e.g. `ws://localhost:8080` |
 | `BROADCAST_KEY` | The key to use for authenticating broadcast requests |
 | `SIGNING_KEY` | The key to use for signing messages |
 | `HOST` | The host address to listen on |
