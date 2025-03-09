@@ -22,13 +22,15 @@ cargo run
 
 ## Endpoints
 
-### `/`
+### GET `/`
 
-This is a WebSocket endpoint that the client connects to. This endpoint requires a room name and a valid signature. Signature is a cryptographic hash of the room name using HMAC-SHA256 with the signing key and is base64url encoded without padding.
+WebSocket endpoint that the client connects to. This endpoint requires a room name and a valid signature.
+Signature is a cryptographic hash of the room name using HMAC-SHA256 with the signing key and is base64url encoded without padding.
 
 ### POST `/broadcast`
 
-This is an endpoint that the server can use to broadcast messages to connected clients. Broadcast requests are authenticated using the `BROADCAST_KEY` and need to include a `room` and `message` in the body.
+Endpoint that the server can use to broadcast messages to connected clients.
+Broadcast requests are authenticated using the `BROADCAST_KEY` and need to include a `room` and `message` in the body.
 
 ```curl
 curl --request POST \
@@ -43,7 +45,7 @@ curl --request POST \
 
 ### GET `/health`
 
-This is a GET endpoint that can be used to check the health of the server.
+Endpoint that can be used to check the health of the server.
 
 
 

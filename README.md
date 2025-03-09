@@ -34,6 +34,8 @@ You can use the client in your project by installing the package using npm or ya
 npm install @turbowire/web
 ```
 
+You can read more about the client in the [client README](./packages/web/README.md).
+
 ### Your Project (Serverless)
 
 You can use the serverless package to create signed WebSocket URLs and broadcast messages to rooms.
@@ -41,3 +43,9 @@ You can use the serverless package to create signed WebSocket URLs and broadcast
 ```bash
 npm install @turbowire/serverless
 ```
+
+You can read more about the serverless package in the [serverless README](./packages/serverless/README.md).
+
+## Contributing
+
+Contributions are welcome! Please open an issue or submit a PR.
