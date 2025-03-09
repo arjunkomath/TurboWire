@@ -1,4 +1,4 @@
-# Turbowire Serverless
+# TurboWire Serverless
 
 This is a helper package to make it easy to work with TurboWire.
 

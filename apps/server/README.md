@@ -1,6 +1,6 @@
-# Turbowire Server
+# TurboWire Server
 
-The Turbowire server is a Rust application that accepts WebSocket connections from the client and has APIs to broadcast messages to rooms.
+The TurboWire server is a Rust application that accepts WebSocket connections from the client and has APIs to broadcast messages to rooms.
 
 ## Getting Started
 

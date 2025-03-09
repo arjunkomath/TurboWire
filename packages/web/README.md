@@ -1,4 +1,4 @@
-# Turbowire Web
+# TurboWire Web
 
 This is a helper package to make it easy to work with TurboWire on your frontend.
 
