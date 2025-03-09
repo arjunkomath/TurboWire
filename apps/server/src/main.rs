@@ -3,7 +3,7 @@ use axum::routing::{get, post};
 use axum::{Router, routing::any};
 use dotenv::dotenv;
 use routes::broadcast::broadcast_handler;
-use routes::health::health_handler;
+use routes::health::{health_handler, stats_handler};
 use routes::wire::ws_handler;
 use shared::AppState;
 use std::env;
@@ -52,6 +52,7 @@ async fn main() -> Result<()> {
         .route("/broadcast", post(broadcast_handler))
         // Health check
         .route("/health", get(health_handler))
+        .route("/stats", get(stats_handler))
         .with_state(state)
         .layer(cors)
         .layer(
