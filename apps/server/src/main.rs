@@ -75,7 +75,7 @@ async fn main() -> Result<()> {
     }
 
     if env::var("REDIS_URL").is_ok() {
-        tracing::debug!("Using Redis pub/sub as broker");
+        tracing::debug!("Using Redis as message queue");
     }
 
     axum::serve(
