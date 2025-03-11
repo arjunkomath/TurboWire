@@ -18,6 +18,7 @@ use std::net::SocketAddr;
 use std::ops::ControlFlow;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use tracing::info;
 
 use crate::shared::{AppState, WsConnectionParams};
 
@@ -55,7 +56,7 @@ pub async fn ws_handler(
         return (StatusCode::SERVICE_UNAVAILABLE, "Connection limit reached").into_response();
     }
 
-    println!(">>> {addr} connected.");
+    info!(">>> {addr} connected.");
     ws.on_upgrade(move |socket| handle_socket(socket, addr, state, params.room))
 }
 
@@ -72,9 +73,9 @@ async fn handle_socket(
         .await
         .is_ok()
     {
-        println!("Pinged {who}...");
+        info!("Pinged {who}...");
     } else {
-        println!("Could not send ping {who}!");
+        info!("Could not send ping {who}!");
         // no Error here since the only thing we can do is to close the connection.
         // If we can not send messages, there is no way to salvage the statemachine anyway.
         return;
@@ -121,17 +122,17 @@ async fn handle_socket(
     state.leave_room(room, who);
 
     // returning from the handler closes the websocket connection
-    println!("Websocket context {who} destroyed");
+    info!("Websocket context {who} destroyed");
 }
 
 async fn process_message(msg: Message, who: SocketAddr, room: String) -> ControlFlow<(), ()> {
     match msg {
         Message::Text(t) => {
-            println!(">>> {who} sent string: {t:?}");
+            info!(">>> {who} sent string: {t:?}");
 
             match env::var("MESSAGE_WEBHOOK_URL") {
                 Ok(webhook_url) => {
-                    println!("Sending message to webhook: {webhook_url}");
+                    info!("Sending message to webhook: {webhook_url}");
                     let client = reqwest::Client::new();
 
                     let _ = client
@@ -145,33 +146,33 @@ async fn process_message(msg: Message, who: SocketAddr, room: String) -> Control
                         .await;
                 }
                 _ => {
-                    println!("No webhook URL set");
+                    info!("No webhook URL set");
                 }
             }
         }
         Message::Binary(d) => {
-            println!(">>> {} sent {} bytes: {:?}", who, d.len(), d);
+            info!(">>> {} sent {} bytes: {:?}", who, d.len(), d);
         }
         Message::Close(c) => {
             if let Some(cf) = c {
-                println!(
+                info!(
                     ">>> {} sent close with code {} and reason `{}`",
                     who, cf.code, cf.reason
                 );
             } else {
-                println!(">>> {who} somehow sent close message without CloseFrame");
+                info!(">>> {who} somehow sent close message without CloseFrame");
             }
             return ControlFlow::Break(());
         }
 
         Message::Pong(v) => {
-            println!(">>> {who} sent pong with {v:?}");
+            info!(">>> {who} sent pong with {v:?}");
         }
         // You should never need to manually handle Message::Ping, as axum's websocket library
         // will do so for you automagically by replying with Pong and copying the v according to
         // spec. But if you need the contents of the pings you can see them here.
         Message::Ping(v) => {
-            println!(">>> {who} sent ping with {v:?}");
+            info!(">>> {who} sent ping with {v:?}");
         }
     }
     ControlFlow::Continue(())

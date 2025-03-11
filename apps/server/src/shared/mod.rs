@@ -1,9 +1,10 @@
 use axum::extract::ws::Message;
-use redis::Commands;
+use redis::{Commands, RedisError};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::env;
 use std::net::SocketAddr;
+use tracing::info;
 
 #[derive(Default)]
 pub struct AppState {
@@ -31,11 +32,11 @@ impl AppState {
         let clients = self.rooms.entry(room.clone()).or_default();
         if !clients.contains(&addr) {
             clients.push(addr);
-            println!(">>> {addr} joined room: {room}");
+            info!(">>> {addr} joined room: {room}");
         }
 
-        while let Some(message) = self.get_last_message_from_redis(&room) {
-            println!("Replaying message to {room}: {message}");
+        while let Ok(message) = self.get_last_message_from_redis(&room) {
+            info!("Replaying message to {room}: {message}");
             self.broadcast_to_room(&room, &message).await;
         }
     }
@@ -45,11 +46,11 @@ impl AppState {
             clients.retain(|a| a != &addr);
 
             if clients.is_empty() {
-                println!("Room {room} is empty, deleting...");
+                info!("Room {room} is empty, deleting...");
                 self.rooms.remove(&room);
             }
         }
-        println!(">>> {addr} left room: {room}");
+        info!(">>> {addr} left room: {room}");
     }
 
     pub fn add_client(
@@ -58,21 +59,21 @@ impl AppState {
         sender: futures::channel::mpsc::UnboundedSender<Message>,
     ) {
         self.clients.insert(addr, sender);
-        println!(">>> Added client: {addr}");
+        info!(">>> Added client: {addr}");
     }
 
     pub fn remove_client(&mut self, addr: &SocketAddr) {
         self.clients.remove(addr);
-        println!(">>> Removed client: {addr}");
+        info!(">>> Removed client: {addr}");
     }
 
     pub async fn broadcast_to_room(&self, room: &str, message: &str) {
-        println!("Broadcasting message to {room}: {message}");
+        info!("Broadcasting message to {room}: {message}");
 
         let clients = match self.rooms.get(room) {
             Some(clients) => clients,
             None => {
-                self.push_message_to_redis(room, message);
+                let _ = self.push_message_to_redis(room, message);
                 return;
             }
         };
@@ -84,30 +85,37 @@ impl AppState {
             };
 
             if let Err(e) = sender.unbounded_send(Message::Text(message.into())) {
-                self.push_message_to_redis(room, message);
-                println!("Failed to send message to {addr}: {e}");
+                let _ = self.push_message_to_redis(room, message);
+                info!("Failed to send message to {addr}: {e}");
             }
         }
     }
 
-    fn push_message_to_redis(&self, room: &str, message: &str) {
-        if let Some(redis) = &self.redis {
-            let mut con = redis.get_connection().unwrap();
-            println!("Pushing message to Redis: {room}");
-            if let Err(err) =
-                con.rpush::<String, String, ()>(format!("messages:{room}"), message.to_string())
-            {
-                println!("Failed to push message to Redis: {err}");
-            }
-        }
-    }
-    fn get_last_message_from_redis(&self, room: &str) -> Option<String> {
-        let Some(redis) = &self.redis else {
-            return None;
-        };
+    fn push_message_to_redis(&self, room: &str, message: &str) -> Result<(), RedisError> {
+        let redis = self.redis.as_ref().ok_or_else(|| {
+            redis::RedisError::from((redis::ErrorKind::ClientError, "Redis client not configured"))
+        })?;
 
-        let mut con = redis.get_connection().unwrap();
-        con.lpop(format!("messages:{room}"), None).ok()
+        let mut con = redis.get_connection()?;
+
+        info!("Pushing message to Redis: {}", room);
+
+        let _: () = con.rpush(format!("messages:{}", room), message.to_string())?;
+        let _: () = con.expire(format!("messages:{}", room), 60 * 60 * 24)?;
+
+        Ok(())
+    }
+
+    fn get_last_message_from_redis(&self, room: &str) -> Result<String, RedisError> {
+        let redis = self.redis.as_ref().ok_or_else(|| {
+            redis::RedisError::from((redis::ErrorKind::ClientError, "Redis client not configured"))
+        })?;
+
+        let mut con = redis.get_connection()?;
+
+        let message = con.lpop(format!("messages:{room}"), None)?;
+
+        Ok(message)
     }
 }
 
