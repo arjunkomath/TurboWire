@@ -38,7 +38,7 @@ async fn main() -> Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let state = Arc::new(Mutex::new(AppState::default()));
+    let state = Arc::new(Mutex::new(AppState::new()));
 
     let cors = CorsLayer::new()
         .allow_origin(Any)
@@ -72,6 +72,10 @@ async fn main() -> Result<()> {
 
     if let Ok(url) = env::var("MESSAGE_WEBHOOK_URL") {
         tracing::debug!("message webhook url set to: {}", url);
+    }
+
+    if env::var("REDIS_URL").is_ok() {
+        tracing::debug!("Using Redis pub/sub as broker");
     }
 
     axum::serve(

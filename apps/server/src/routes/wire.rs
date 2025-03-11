@@ -55,8 +55,6 @@ pub async fn ws_handler(
         return (StatusCode::SERVICE_UNAVAILABLE, "Connection limit reached").into_response();
     }
 
-    state.lock().await.join_room(params.room.clone(), addr);
-
     println!(">>> {addr} connected.");
     ws.on_upgrade(move |socket| handle_socket(socket, addr, state, params.room))
 }
@@ -89,6 +87,7 @@ async fn handle_socket(
     {
         let mut state = state.lock().await;
         state.add_client(who, tx);
+        state.join_room(room.clone(), who).await;
     }
 
     let mut send_task = tokio::spawn(async move {

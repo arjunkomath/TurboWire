@@ -26,13 +26,15 @@ pub async fn broadcast_handler(
     if api_key != broadcast_key {
         return (
             StatusCode::UNAUTHORIZED,
-            Json(json!({"message": "Invalid API key"})),
+            Json(json!({"message": "Invalid broadcast key"})),
         )
             .into_response();
     }
 
     let state = state.lock().await;
-    state.broadcast_to_room(payload.room, payload.message).await;
+    state
+        .broadcast_to_room(&payload.room, &payload.message)
+        .await;
 
     (StatusCode::OK, Json(json!({"message": "Broadcasted"}))).into_response()
 }
