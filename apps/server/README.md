@@ -4,20 +4,29 @@ The TurboWire server is a Rust application that accepts WebSocket connections fr
 
 ## Getting Started
 
+Development server
+
 ```bash
 cargo run
 ```
 
+Production, use provided Dockerfile or prebuilt image from Docker Hub.
+
+```bash
+docker run -d -p 8080:8080 -e BROADCAST_KEY=your_broadcast_key -e SIGNING_KEY=your_signing_key arjunkomath/turbowire-server:latest
+```
+
 ## Environment Variables
 
-| Variable | Description |
-| -------- | -------- |
-| `CONNECTION_LIMIT` | The maximum number of connections to allow |
-| `MESSAGE_WEBHOOK_URL` | The URL to send messages to |
-| `BROADCAST_KEY` | The key to use for authenticating broadcast requests |
-| `SIGNING_KEY` | The key to use for signing messages |
-| `HOST` | The host address to listen on |
-| `PORT` | The port to listen on |
+| Variable | Description | Default | Required |
+| -------- | -------- | -------- | -------- |
+| `BROADCAST_KEY` | The key to use for authenticating broadcast requests | - | Yes |
+| `SIGNING_KEY` | The key to use for signing wire | - | Yes |
+| `CONNECTION_LIMIT` | The maximum number of concurrent connections | `1000` | No |
+| `MESSAGE_WEBHOOK_URL` | The URL to send client messages | - | No |
+| `REDIS_URL` | Redis server for message queue | - | No |
+| `HOST` | The host address to listen on | `0.0.0.0` | No |
+| `PORT` | The port to listen on | `8080` | No |
 
 ## Endpoints
 
