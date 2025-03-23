@@ -12,9 +12,9 @@ The project consists of three parts:
 
 ![image](https://github.com/user-attachments/assets/7ffa145c-44e8-4c4c-8236-d0e62653e0d1)
 
-### Benchmark
+## Benchmark
 
-Tested on a 1vCPU, 2GB RAM instance on Railway.
+Test on a 1vCPU, 2GB RAM instance on Railway, 500 concurrent connections over home internet.
 
 ```bash
      ✓ status is 101
