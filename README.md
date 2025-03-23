@@ -22,7 +22,6 @@ Tested on a 1vCPU, 2GB RAM instance on Railway.
      checks................: 100.00% 2500 out of 2500
      data_received.........: 8.9 MB  246 kB/s
      data_sent.............: 2.0 MB  55 kB/s
-   ✓ http_req_duration.....: avg=0s       min=0s       med=0s       max=0s     p(90)=0s    p(95)=0s
      iteration_duration....: avg=6.81s    min=6.3s     med=6.38s    max=10.58s p(90)=8.68s p(95)=9.7s
      iterations............: 2500    69.097428/s
      vus...................: 30      min=30           max=500
