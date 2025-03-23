@@ -12,29 +12,6 @@ The project consists of three parts:
 
 ![image](https://github.com/user-attachments/assets/7ffa145c-44e8-4c4c-8236-d0e62653e0d1)
 
-## Benchmark
-
-Test on a 1vCPU, 2GB RAM instance on Railway, 500 concurrent connections over home internet.
-
-```bash
-     ✓ status is 101
-
-     checks................: 100.00% 2500 out of 2500
-     data_received.........: 8.9 MB  246 kB/s
-     data_sent.............: 2.0 MB  55 kB/s
-     iteration_duration....: avg=6.81s    min=6.3s     med=6.38s    max=10.58s p(90)=8.68s p(95)=9.7s
-     iterations............: 2500    69.097428/s
-     vus...................: 30      min=30           max=500
-     vus_max...............: 500     min=500          max=500
-     ws_connecting.........: avg=816.22ms min=301.21ms med=381.38ms max=4.58s  p(90)=2.68s p(95)=3.7s
-     ws_msgs_sent..........: 2500    69.097428/s
-     ws_session_duration...: avg=5.81s    min=5.3s     med=5.38s    max=9.58s  p(90)=7.68s p(95)=8.7s
-     ws_sessions...........: 2500    69.097428/s
-
-
-running (0m36.2s), 000/500 VUs, 2500 complete and 0 interrupted iterations
-```
-
 ## Getting Started
 
 ### TurboWire Server
@@ -68,6 +45,29 @@ npm install @turbowire/serverless
 ```
 
 You can read more about the serverless package in the [serverless README](./packages/serverless/README.md).
+
+## Benchmark
+
+Test on a 1vCPU, 2GB RAM instance on Railway, 500 concurrent connections over home internet.
+
+```bash
+     ✓ status is 101
+
+     checks................: 100.00% 2500 out of 2500
+     data_received.........: 8.9 MB  246 kB/s
+     data_sent.............: 2.0 MB  55 kB/s
+     iteration_duration....: avg=6.81s    min=6.3s     med=6.38s    max=10.58s p(90)=8.68s p(95)=9.7s
+     iterations............: 2500    69.097428/s
+     vus...................: 30      min=30           max=500
+     vus_max...............: 500     min=500          max=500
+     ws_connecting.........: avg=816.22ms min=301.21ms med=381.38ms max=4.58s  p(90)=2.68s p(95)=3.7s
+     ws_msgs_sent..........: 2500    69.097428/s
+     ws_session_duration...: avg=5.81s    min=5.3s     med=5.38s    max=9.58s  p(90)=7.68s p(95)=8.7s
+     ws_sessions...........: 2500    69.097428/s
+
+
+running (0m36.2s), 000/500 VUs, 2500 complete and 0 interrupted iterations
+```
 
 ## Contributing
 
