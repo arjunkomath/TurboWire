@@ -14,9 +14,6 @@ importers:
       '@turbowire/web':
         specifier: file:../../packages/web
         version: file:../../packages/web(zod@4.1.12)
-      '@types/uuid':
-        specifier: ^11.0.0
-        version: 11.0.0
       next:
         specifier: 16.0.1
         version: 16.0.1(@babel/core@7.28.5)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -45,6 +42,9 @@ importers:
       '@types/react-dom':
         specifier: ^19
         version: 19.2.2(@types/react@19.2.2)
+      '@types/uuid':
+        specifier: ^11.0.0
+        version: 11.0.0
       eslint:
         specifier: ^9
         version: 9.39.1(jiti@2.6.1)

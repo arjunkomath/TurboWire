@@ -6,12 +6,6 @@ This is a real-time chat application demonstrating TurboWire's capabilities.
 
 1. **Configure environment variables:**
 
-   ```bash
-   cp .env.local.example .env.local
-   ```
-
-   Edit `.env.local` with your TurboWire server credentials:
-
    ```env
    TURBOWIRE_DOMAIN=localhost:8080
    TURBOWIRE_BROADCAST_KEY=your-broadcast-key

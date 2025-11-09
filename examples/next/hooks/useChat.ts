@@ -73,6 +73,7 @@ export function useChat() {
 
       setClient(wire);
     } catch (error) {
+      alert("Failed to join chat");
       console.error("Failed to join chat:", error);
     }
   };
@@ -91,6 +92,7 @@ export function useChat() {
     try {
       void broadcastMessage(message);
     } catch (error) {
+      alert("Failed to send message");
       console.error("Failed to send message:", error);
     }
   };
@@ -99,9 +101,14 @@ export function useChat() {
     if (client) {
       void userLeft(userId, username);
 
+      client.off("user:joined");
+      client.off("user:left");
+      client.off("message:sent");
+
       client.disconnect();
       setClient(null);
     }
+
     setConnected(false);
     setIsJoined(false);
     setMessages([]);

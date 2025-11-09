@@ -38,16 +38,16 @@ export type TurboWireOptions<T extends SchemaDefinition> = {
    */
   secure?: boolean;
   /**
-   * Optional Zod schema for runtime validation and type inference
+   * Zod schema for runtime validation and type inference
    */
-  schema?: T;
+  schema: T;
 };
 
-export class TurboWireHub<T extends SchemaDefinition = Record<string, never>> {
+export class TurboWireHub<T extends SchemaDefinition> {
   private domain: string;
   private broadcastKey: string;
   private signingKey: string;
-  private schema?: T;
+  private schema: T;
 
   private broadcastUrl: string;
   private wireUrl: string;
@@ -56,15 +56,15 @@ export class TurboWireHub<T extends SchemaDefinition = Record<string, never>> {
    * @param domain - The domain of the TurboWire server
    * @param options - The options for the TurboWire server
    */
-  constructor(domain: string, options?: TurboWireOptions<T>) {
+  constructor(domain: string, options: TurboWireOptions<T>) {
     if (!domain) {
       throw new Error("domain is required");
     }
 
     const broadcastKey =
-      options?.broadcastKey ?? process.env.TURBOWIRE_BROADCAST_KEY;
-    const signingKey = options?.signingKey ?? process.env.TURBOWIRE_SIGNING_KEY;
-    const secure = options?.secure ?? true;
+      options.broadcastKey ?? process.env.TURBOWIRE_BROADCAST_KEY;
+    const signingKey = options.signingKey ?? process.env.TURBOWIRE_SIGNING_KEY;
+    const secure = options.secure ?? true;
 
     if (!broadcastKey) {
       throw new Error(
@@ -80,13 +80,13 @@ export class TurboWireHub<T extends SchemaDefinition = Record<string, never>> {
     this.domain = domain;
     this.broadcastKey = broadcastKey;
     this.signingKey = signingKey;
-    this.schema = options?.schema;
+    this.schema = options.schema;
 
     this.broadcastUrl =
-      options?.broadcastUrl ??
+      options.broadcastUrl ??
       `${secure ? "https" : "http"}://${this.domain}/broadcast`;
     this.wireUrl =
-      options?.wireUrl ?? `${secure ? "wss" : "ws"}://${this.domain}`;
+      options.wireUrl ?? `${secure ? "wss" : "ws"}://${this.domain}`;
   }
 
   /**
@@ -101,7 +101,9 @@ export class TurboWireHub<T extends SchemaDefinition = Record<string, never>> {
     event: K,
     data: InferSchemaType<T>[K],
   ): Promise<Response> {
-    if (this.schema?.[event]) {
+    const message = { event, data };
+
+    if (this.schema[event]) {
       const validation = this.schema[event].safeParse(data);
       if (!validation.success) {
         throw new Error(
@@ -110,11 +112,13 @@ export class TurboWireHub<T extends SchemaDefinition = Record<string, never>> {
           }`,
         );
       }
+
+      message.data = validation.data;
     }
 
     return fetch(this.broadcastUrl, {
       method: "POST",
-      body: JSON.stringify({ room, message: JSON.stringify({ event, data }) }),
+      body: JSON.stringify({ room, message: JSON.stringify(message) }),
       headers: {
         "Content-Type": "application/json",
         "x-broadcast-key": this.broadcastKey,

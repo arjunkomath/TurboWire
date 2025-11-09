@@ -6,7 +6,9 @@ type InferSchemaType<T extends SchemaDefinition> = {
   [K in keyof T]: z.infer<T[K]>;
 };
 
-type EventHandler<T = unknown> = (data: T) => void;
+type EventHandlersMap<T extends SchemaDefinition> = {
+  [K in keyof InferSchemaType<T>]?: Set<(data: InferSchemaType<T>[K]) => void>;
+};
 
 export type TurboWireOptions<T extends SchemaDefinition> = {
   /**
@@ -22,20 +24,19 @@ export type TurboWireOptions<T extends SchemaDefinition> = {
    */
   retryInterval?: number;
   /**
-   * Optional Zod schema for runtime validation and type inference
+   * Zod schema for runtime validation and type inference
    */
-  schema?: T;
+  schema: T;
 };
 
-export class TurboWire<T extends SchemaDefinition = Record<string, never>> {
-  private ws: WebSocket | null = null;
+export class TurboWire<T extends SchemaDefinition> {
+  private ws: WebSocket | undefined = undefined;
 
   private wireUrl: string;
-  private eventHandlers: Map<keyof InferSchemaType<T>, Set<EventHandler<any>>> =
-    new Map();
+  private eventHandlers: EventHandlersMap<T> = {};
   private errorCallback?: (error: Event) => void;
   private connectCallback?: () => void;
-  private schema?: T;
+  private schema: T;
 
   private retryCount = 0;
   private maxRetries: number;
@@ -48,12 +49,12 @@ export class TurboWire<T extends SchemaDefinition = Record<string, never>> {
    * @param wireUrl - The URL of the TurboWire server
    * @param options - The options for the TurboWire connection
    */
-  constructor(wireUrl: string, options?: TurboWireOptions<T>) {
+  constructor(wireUrl: string, options: TurboWireOptions<T>) {
     this.wireUrl = wireUrl;
-    this.debug = options?.debug || false;
-    this.maxRetries = options?.maxRetries ?? 10;
-    this.retryInterval = options?.retryInterval ?? 3000;
-    this.schema = options?.schema;
+    this.debug = options.debug || false;
+    this.maxRetries = options.maxRetries ?? 10;
+    this.retryInterval = options.retryInterval ?? 3000;
+    this.schema = options.schema;
 
     if (this.debug) {
       console.log("Initializing TurboWire with URL", this.wireUrl);
@@ -64,11 +65,11 @@ export class TurboWire<T extends SchemaDefinition = Record<string, never>> {
     event: K,
     handler: (data: InferSchemaType<T>[K]) => void,
   ): void {
-    if (!this.eventHandlers.has(event)) {
-      this.eventHandlers.set(event, new Set());
+    if (!this.eventHandlers[event]) {
+      this.eventHandlers[event] = new Set();
     }
 
-    this.eventHandlers.get(event)?.add(handler);
+    this.eventHandlers[event]?.add(handler);
   }
 
   off<K extends keyof InferSchemaType<T>>(
@@ -76,15 +77,15 @@ export class TurboWire<T extends SchemaDefinition = Record<string, never>> {
     handler?: (data: InferSchemaType<T>[K]) => void,
   ): void {
     if (!handler) {
-      this.eventHandlers.delete(event);
+      delete this.eventHandlers[event];
       return;
     }
 
-    const handlers = this.eventHandlers.get(event);
+    const handlers = this.eventHandlers[event];
     if (handlers) {
       handlers.delete(handler);
       if (handlers.size === 0) {
-        this.eventHandlers.delete(event);
+        delete this.eventHandlers[event];
       }
     }
   }
@@ -163,7 +164,7 @@ export class TurboWire<T extends SchemaDefinition = Record<string, never>> {
         return;
       }
 
-      if (this.schema?.[event]) {
+      if (this.schema[event]) {
         const validation = this.schema[event].safeParse(data);
         if (!validation.success) {
           if (this.debug) {
@@ -176,9 +177,9 @@ export class TurboWire<T extends SchemaDefinition = Record<string, never>> {
         }
       }
 
-      const handlers = this.eventHandlers.get(event);
+      const handlers = this.eventHandlers[event];
       if (handlers) {
-        handlers.forEach((handler) => {
+        for (const handler of handlers) {
           try {
             handler(data);
           } catch (error) {
@@ -189,7 +190,7 @@ export class TurboWire<T extends SchemaDefinition = Record<string, never>> {
               );
             }
           }
-        });
+        }
       } else if (this.debug) {
         console.warn(`No handler registered for event "${String(event)}"`);
       }
@@ -208,22 +209,24 @@ export class TurboWire<T extends SchemaDefinition = Record<string, never>> {
       throw new Error("WebSocket is not connected");
     }
 
-    if (this.schema?.[event]) {
+    const message = { event, data };
+
+    if (this.schema[event]) {
       const validation = this.schema[event].safeParse(data);
       if (!validation.success) {
         throw new Error(
           `Validation failed for event "${String(event)}": ${validation.error.message}`,
         );
+      } else {
+        message.data = validation.data;
       }
     }
-
-    const message = JSON.stringify({ event, data });
 
     if (this.debug) {
       console.log("Emitting event to TurboWire server", event, data);
     }
 
-    this.ws.send(message);
+    this.ws.send(JSON.stringify(message));
   }
 
   /**
@@ -240,7 +243,7 @@ export class TurboWire<T extends SchemaDefinition = Record<string, never>> {
         console.log("Disconnecting from TurboWire server");
       }
       this.ws.close();
-      this.ws = null;
+      this.ws = undefined;
     }
 
     this.retryCount = 0;

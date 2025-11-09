@@ -20,7 +20,7 @@ export default function Home() {
 
   if (!isJoined) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-blue-50 to-indigo-100">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="bg-white p-8 rounded-lg shadow-lg w-96">
           <h1 className="text-3xl font-bold mb-6 text-gray-800">
             TurboWire Chat Demo
@@ -58,7 +58,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="min-h-screen p-4">
       <div className="max-w-6xl mx-auto h-[calc(100vh-2rem)] flex gap-4">
         <div className="flex-1 bg-white rounded-lg shadow-lg flex flex-col">
           <div className="p-4 border-b border-gray-200 flex justify-between items-center">
