@@ -1,6 +1,20 @@
-import { createHmac } from 'node:crypto';
+import { createHmac } from "node:crypto";
+import type { z } from "zod";
 
-export type TurboWireOptions = {
+type SchemaDefinition = Record<string, z.ZodType>;
+
+type InferSchemaType<T extends SchemaDefinition> = {
+  [K in keyof T]: z.infer<T[K]>;
+};
+
+export type EventNames<T extends SchemaDefinition> = keyof T;
+
+export type EventPayload<
+  T extends SchemaDefinition,
+  K extends keyof T,
+> = z.infer<T[K]>;
+
+export type TurboWireOptions<T extends SchemaDefinition> = {
   /**
    * Optional override for the broadcast endpoint
    * Useful if you've set up a private endpoint for server-to-server communication
@@ -23,12 +37,17 @@ export type TurboWireOptions = {
    * Defaults to true
    */
   secure?: boolean;
+  /**
+   * Optional Zod schema for runtime validation and type inference
+   */
+  schema?: T;
 };
 
-export class TurboWireHub {
+export class TurboWireHub<T extends SchemaDefinition = Record<string, never>> {
   private domain: string;
   private broadcastKey: string;
   private signingKey: string;
+  private schema?: T;
 
   private broadcastUrl: string;
   private wireUrl: string;
@@ -37,52 +56,72 @@ export class TurboWireHub {
    * @param domain - The domain of the TurboWire server
    * @param options - The options for the TurboWire server
    */
-  constructor(domain: string, options?: TurboWireOptions) {
+  constructor(domain: string, options?: TurboWireOptions<T>) {
     if (!domain) {
-      throw new Error('domain is required');
+      throw new Error("domain is required");
     }
 
-    const broadcastKey = options?.broadcastKey ?? process.env.TURBOWIRE_BROADCAST_KEY;
+    const broadcastKey =
+      options?.broadcastKey ?? process.env.TURBOWIRE_BROADCAST_KEY;
     const signingKey = options?.signingKey ?? process.env.TURBOWIRE_SIGNING_KEY;
     const secure = options?.secure ?? true;
 
     if (!broadcastKey) {
       throw new Error(
-        'TurboWire broadcast key is required, either as an option or as the TURBOWIRE_BROADCAST_KEY environment variable'
+        "TurboWire broadcast key is required, either as an option or as the TURBOWIRE_BROADCAST_KEY environment variable",
       );
     }
     if (!signingKey) {
       throw new Error(
-        'TurboWire signing key is required, either as an option or as the TURBOWIRE_SIGNING_KEY environment variable'
+        "TurboWire signing key is required, either as an option or as the TURBOWIRE_SIGNING_KEY environment variable",
       );
     }
 
     this.domain = domain;
     this.broadcastKey = broadcastKey;
     this.signingKey = signingKey;
+    this.schema = options?.schema;
 
     this.broadcastUrl =
-      options?.broadcastUrl ?? `${secure ? 'https' : 'http'}://${this.domain}/broadcast`;
-    this.wireUrl = options?.wireUrl ?? `${secure ? 'wss' : 'ws'}://${this.domain}`;
+      options?.broadcastUrl ??
+      `${secure ? "https" : "http"}://${this.domain}/broadcast`;
+    this.wireUrl =
+      options?.wireUrl ?? `${secure ? "wss" : "ws"}://${this.domain}`;
   }
 
   /**
    * Broadcast a message to a room
    * @param room - The room to broadcast the message to
-   * @param message - The message to broadcast
+   * @param event - The event name
+   * @param data - The event data (validated against schema if provided)
    * @returns The response from the TurboWire server
    */
-  async broadcast(room: string, message: string): Promise<Response> {
+  async broadcast<K extends keyof InferSchemaType<T>>(
+    room: string,
+    event: K,
+    data: InferSchemaType<T>[K],
+  ): Promise<Response> {
+    if (this.schema?.[event]) {
+      const validation = this.schema[event].safeParse(data);
+      if (!validation.success) {
+        throw new Error(
+          `Validation failed for event "${String(event)}": ${
+            validation.error.message
+          }`,
+        );
+      }
+    }
+
     return fetch(this.broadcastUrl, {
-      method: 'POST',
-      body: JSON.stringify({ room, message }),
+      method: "POST",
+      body: JSON.stringify({ room, message: JSON.stringify({ event, data }) }),
       headers: {
-        'Content-Type': 'application/json',
-        'x-broadcast-key': this.broadcastKey,
+        "Content-Type": "application/json",
+        "x-broadcast-key": this.broadcastKey,
       },
     }).then((res) => {
       if (!res.ok) {
-        throw new Error('Failed to broadcast message');
+        throw new Error(`Failed to broadcast message: ${res.body}`);
       }
       return res.json();
     });
@@ -98,13 +137,15 @@ export class TurboWireHub {
    */
   getSignedWire(room: string): string {
     if (!room) {
-      throw new Error('Room is required');
+      throw new Error("Room is required");
     }
 
-    const hmac = createHmac('sha256', this.signingKey);
+    const hmac = createHmac("sha256", this.signingKey);
     hmac.update(room);
-    const signature = hmac.digest('base64url');
+    const signature = hmac.digest("base64url");
 
-    return `${this.wireUrl}?room=${encodeURIComponent(room)}&signature=${signature}`;
+    return `${this.wireUrl}?room=${encodeURIComponent(
+      room,
+    )}&signature=${signature}`;
   }
 }

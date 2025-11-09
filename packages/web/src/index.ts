@@ -1,15 +1,41 @@
-export type TurboWireOptions = {
-  debug?: boolean;
-  maxRetries?: number;
-  retryInterval?: number;
+import type { z } from "zod";
+
+type SchemaDefinition = Record<string, z.ZodType>;
+
+type InferSchemaType<T extends SchemaDefinition> = {
+  [K in keyof T]: z.infer<T[K]>;
 };
 
-export class TurboWire {
+type EventHandler<T = unknown> = (data: T) => void;
+
+export type TurboWireOptions<T extends SchemaDefinition> = {
+  /**
+   * Enable debug logging
+   */
+  debug?: boolean;
+  /**
+   * Maximum number of reconnection attempts
+   */
+  maxRetries?: number;
+  /**
+   * Interval between reconnection attempts in milliseconds
+   */
+  retryInterval?: number;
+  /**
+   * Optional Zod schema for runtime validation and type inference
+   */
+  schema?: T;
+};
+
+export class TurboWire<T extends SchemaDefinition = Record<string, never>> {
   private ws: WebSocket | null = null;
 
   private wireUrl: string;
-  private messageCallback?: (message: string) => void;
+  private eventHandlers: Map<keyof InferSchemaType<T>, Set<EventHandler<any>>> =
+    new Map();
   private errorCallback?: (error: Event) => void;
+  private connectCallback?: () => void;
+  private schema?: T;
 
   private retryCount = 0;
   private maxRetries: number;
@@ -22,55 +48,82 @@ export class TurboWire {
    * @param wireUrl - The URL of the TurboWire server
    * @param options - The options for the TurboWire connection
    */
-  constructor(wireUrl: string, options?: TurboWireOptions) {
+  constructor(wireUrl: string, options?: TurboWireOptions<T>) {
     this.wireUrl = wireUrl;
     this.debug = options?.debug || false;
     this.maxRetries = options?.maxRetries ?? 10;
     this.retryInterval = options?.retryInterval ?? 3000;
+    this.schema = options?.schema;
 
     if (this.debug) {
-      console.log('Initializing TurboWire with URL', this.wireUrl);
+      console.log("Initializing TurboWire with URL", this.wireUrl);
     }
   }
 
-  /**
-   * Connect to the TurboWire server via a WebSocket
-   * @param onMessage - The callback for when a message is received from the server
-   * @param onError - The callback for when an error occurs
-   */
-  connect(onMessage: (message: string) => void, onError?: (error: Event) => void) {
-    this.messageCallback = onMessage;
-    this.errorCallback = onError;
+  on<K extends keyof InferSchemaType<T>>(
+    event: K,
+    handler: (data: InferSchemaType<T>[K]) => void,
+  ): void {
+    if (!this.eventHandlers.has(event)) {
+      this.eventHandlers.set(event, new Set());
+    }
 
+    this.eventHandlers.get(event)?.add(handler);
+  }
+
+  off<K extends keyof InferSchemaType<T>>(
+    event: K,
+    handler?: (data: InferSchemaType<T>[K]) => void,
+  ): void {
+    if (!handler) {
+      this.eventHandlers.delete(event);
+      return;
+    }
+
+    const handlers = this.eventHandlers.get(event);
+    if (handlers) {
+      handlers.delete(handler);
+      if (handlers.size === 0) {
+        this.eventHandlers.delete(event);
+      }
+    }
+  }
+
+  connect(onConnect?: () => void, onError?: (error: Event) => void): void {
+    this.connectCallback = onConnect;
+    this.errorCallback = onError;
     this.establishConnection();
   }
 
   private establishConnection(): void {
     if (this.debug) {
-      console.log(`Connecting to TurboWire server (attempt ${this.retryCount + 1})`);
+      console.log(
+        `Connecting to TurboWire server (attempt ${this.retryCount + 1})`,
+      );
     }
 
     this.ws = new WebSocket(this.wireUrl);
 
     this.ws.onerror = (event: Event) => {
       if (this.debug) {
-        console.error('Error on TurboWire connection', event);
+        console.error("Error on TurboWire connection", event);
       }
       this.errorCallback?.(event);
     };
 
     this.ws.onopen = () => {
       if (this.debug) {
-        console.log('Connected to TurboWire server');
+        console.log("Connected to TurboWire server");
       }
       this.retryCount = 0;
+      this.connectCallback?.();
 
       if (this.ws) {
         this.ws.onmessage = (event: MessageEvent) => {
           if (this.debug) {
-            console.log('Received message from TurboWire server', event.data);
+            console.log("Received message from TurboWire server", event.data);
           }
-          this.messageCallback?.(event.data);
+          this.handleMessage(event.data);
         };
       }
     };
@@ -78,10 +131,10 @@ export class TurboWire {
     this.ws.onclose = (event: CloseEvent) => {
       if (this.debug) {
         console.log(
-          'Disconnected from TurboWire server',
+          "Disconnected from TurboWire server",
           `Code: ${event.code}`,
-          `Reason: ${event.reason || 'No reason provided'}`,
-          `Clean: ${event.wasClean}`
+          `Reason: ${event.reason || "No reason provided"}`,
+          `Clean: ${event.wasClean}`,
         );
       }
 
@@ -89,7 +142,7 @@ export class TurboWire {
         this.retryCount++;
         if (this.debug) {
           console.log(
-            `Attempting reconnection in ${this.retryInterval}ms (attempt ${this.retryCount}/${this.maxRetries})`
+            `Attempting reconnection in ${this.retryInterval}ms (attempt ${this.retryCount}/${this.maxRetries})`,
           );
         }
         this.retryTimeout = setTimeout(() => {
@@ -99,19 +152,78 @@ export class TurboWire {
     };
   }
 
-  /**
-   * Send a message to the TurboWire server
-   * @param message - The message to send
-   */
-  send(message: string): void {
-    if (this.ws) {
-      if (this.debug) {
-        console.log('Sending message to TurboWire server', message);
+  private handleMessage(rawMessage: string): void {
+    try {
+      const { event, data } = JSON.parse(rawMessage);
+
+      if (!event) {
+        if (this.debug) {
+          console.warn("Received message without event type", rawMessage);
+        }
+        return;
       }
-      this.ws.send(message);
-    } else {
-      throw new Error('WebSocket is not connected');
+
+      if (this.schema?.[event]) {
+        const validation = this.schema[event].safeParse(data);
+        if (!validation.success) {
+          if (this.debug) {
+            console.error(
+              `Validation failed for event "${String(event)}"`,
+              validation.error.message,
+            );
+          }
+          return;
+        }
+      }
+
+      const handlers = this.eventHandlers.get(event);
+      if (handlers) {
+        handlers.forEach((handler) => {
+          try {
+            handler(data);
+          } catch (error) {
+            if (this.debug) {
+              console.error(
+                `Error in event handler for "${String(event)}"`,
+                error,
+              );
+            }
+          }
+        });
+      } else if (this.debug) {
+        console.warn(`No handler registered for event "${String(event)}"`);
+      }
+    } catch (error) {
+      if (this.debug) {
+        console.error("Failed to parse message", rawMessage, error);
+      }
     }
+  }
+
+  emit<K extends keyof InferSchemaType<T>>(
+    event: K,
+    data: InferSchemaType<T>[K],
+  ): void {
+    if (!this.ws) {
+      throw new Error("WebSocket is not connected");
+    }
+
+    if (this.schema?.[event]) {
+      const validation = this.schema[event].safeParse(data);
+      if (!validation.success) {
+        throw new Error(
+          `Validation failed for event "${String(event)}": ${validation.error.message}`,
+        );
+      }
+    }
+
+    const message = JSON.stringify({ event, data });
+
+    if (this.debug) {
+      console.log("Emitting event to TurboWire server", event, data);
+    }
+
+    this.ws.send(message);
   }
 
   /**
@@ -125,7 +237,7 @@ export class TurboWire {
 
     if (this.ws) {
       if (this.debug) {
-        console.log('Disconnecting from TurboWire server');
+        console.log("Disconnecting from TurboWire server");
       }
       this.ws.close();
       this.ws = null;

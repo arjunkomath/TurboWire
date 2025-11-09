@@ -19,8 +19,12 @@
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
-    "@biomejs/biome": "1.5.3",
-    "typescript": "^5.3.3"
+    "@biomejs/biome": "2.0.6",
+    "typescript": "^5.3.3",
+    "zod": "^4.1.12"
+  },
+  "peerDependencies": {
+    "zod": "^3.0.0 || ^4.0.0"
   },
   "author": "Arjun Komath <arjunkomath@gmail.com>",
   "license": "MIT",
