@@ -41,7 +41,7 @@ export class TurboWire<T extends SchemaDefinition> {
   private retryCount = 0;
   private maxRetries: number;
   private retryInterval: number;
-  private retryTimeout?: number;
+  private retryTimeout?: ReturnType<typeof setTimeout>;
   private intentionalDisconnect = false;
 
   private debug: boolean;
@@ -163,7 +163,7 @@ export class TurboWire<T extends SchemaDefinition> {
 
   private handleMessage(rawMessage: string): void {
     try {
-      const { event, data } = JSON.parse(rawMessage);
+      let { event, data } = JSON.parse(rawMessage);
 
       if (!event) {
         if (this.debug) {
@@ -183,6 +183,8 @@ export class TurboWire<T extends SchemaDefinition> {
           }
           return;
         }
+
+        data = validation.data;
       }
 
       const handlers = this.eventHandlers[event];
