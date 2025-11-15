@@ -42,6 +42,7 @@ export class TurboWire<T extends SchemaDefinition> {
   private maxRetries: number;
   private retryInterval: number;
   private retryTimeout?: number;
+  private intentionalDisconnect = false;
 
   private debug: boolean;
 
@@ -91,6 +92,7 @@ export class TurboWire<T extends SchemaDefinition> {
   }
 
   connect(onConnect?: () => void, onError?: (error: Event) => void): void {
+    this.intentionalDisconnect = false;
     this.connectCallback = onConnect;
     this.errorCallback = onError;
     this.establishConnection();
@@ -137,6 +139,12 @@ export class TurboWire<T extends SchemaDefinition> {
           `Reason: ${event.reason || "No reason provided"}`,
           `Clean: ${event.wasClean}`,
         );
+      }
+
+      this.ws = undefined;
+
+      if (this.intentionalDisconnect || event.code === 1000) {
+        return;
       }
 
       if (!event.wasClean && this.retryCount < this.maxRetries) {
@@ -233,6 +241,8 @@ export class TurboWire<T extends SchemaDefinition> {
    * Disconnect from the TurboWire server
    */
   disconnect(): void {
+    this.intentionalDisconnect = true;
+
     if (this.retryTimeout) {
       clearTimeout(this.retryTimeout);
       this.retryTimeout = undefined;
@@ -242,8 +252,7 @@ export class TurboWire<T extends SchemaDefinition> {
       if (this.debug) {
         console.log("Disconnecting from TurboWire server");
       }
-      this.ws.close();
-      this.ws = undefined;
+      this.ws.close(1000, "Client disconnect");
     }
 
     this.retryCount = 0;
