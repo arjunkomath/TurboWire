@@ -14,6 +14,17 @@ export type EventPayload<
   K extends keyof T,
 > = z.infer<T[K]>;
 
+type EventMethods<T extends SchemaDefinition> = {
+  [K in keyof InferSchemaType<T>]: (
+    data: InferSchemaType<T>[K],
+  ) => Promise<Response>;
+};
+
+export type TurboWireHub<T extends SchemaDefinition> = {
+  broadcast(room: string): EventMethods<T>;
+  getSignedWire(room: string): string;
+};
+
 export type TurboWireOptions<T extends SchemaDefinition> = {
   /**
    * Optional override for the broadcast endpoint
@@ -43,7 +54,7 @@ export type TurboWireOptions<T extends SchemaDefinition> = {
   schema: T;
 };
 
-export class TurboWireHub<T extends SchemaDefinition> {
+class TurboWireHubImplementation<T extends SchemaDefinition> {
   private domain: string;
   private broadcastKey: string;
   private signingKey: string;
@@ -89,14 +100,29 @@ export class TurboWireHub<T extends SchemaDefinition> {
       options.wireUrl ?? `${secure ? "wss" : "ws"}://${this.domain}`;
   }
 
-  /**
-   * Broadcast a message to a room
-   * @param room - The room to broadcast the message to
-   * @param event - The event name
-   * @param data - The event data (validated against schema if provided)
-   * @returns The response from the TurboWire server
-   */
-  async broadcast<K extends keyof InferSchemaType<T>>(
+  broadcast(room: string): EventMethods<T> {
+    if (!room) {
+      throw new Error("Room is required");
+    }
+
+    const self = this;
+
+    const target = {};
+    return new Proxy(target, {
+      get(_, prop: string | symbol): unknown {
+        if (prop in self.schema) {
+          return (data: InferSchemaType<T>[keyof T]) => {
+            const eventName = prop as keyof T;
+            return self.broadcastMessage(room, eventName, data);
+          };
+        }
+
+        return Reflect.get(target, prop);
+      },
+    }) as EventMethods<T>;
+  }
+
+  private async broadcastMessage<K extends keyof T>(
     room: string,
     event: K,
     data: InferSchemaType<T>[K],
@@ -107,9 +133,7 @@ export class TurboWireHub<T extends SchemaDefinition> {
       const validation = this.schema[event].safeParse(data);
       if (!validation.success) {
         throw new Error(
-          `Validation failed for event "${String(event)}": ${
-            validation.error.message
-          }`,
+          `Validation failed for event "${String(event)}": ${validation.error.message}`,
         );
       }
 
@@ -148,8 +172,13 @@ export class TurboWireHub<T extends SchemaDefinition> {
     hmac.update(room);
     const signature = hmac.digest("base64url");
 
-    return `${this.wireUrl}?room=${encodeURIComponent(
-      room,
-    )}&signature=${signature}`;
+    return `${this.wireUrl}?room=${encodeURIComponent(room)}&signature=${signature}`;
   }
+}
+
+export function createTurboWireHub<T extends SchemaDefinition>(
+  domain: string,
+  options: TurboWireOptions<T>,
+): TurboWireHub<T> {
+  return new TurboWireHubImplementation(domain, options);
 }

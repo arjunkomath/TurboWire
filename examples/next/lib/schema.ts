@@ -2,17 +2,17 @@ import type { EventNames, EventPayload } from "@turbowire/serverless";
 import z from "zod/v4";
 
 export const chatSchema = {
-  "user:joined": z.object({
+  userJoined: z.object({
     userId: z.string(),
     username: z.string(),
     timestamp: z.number(),
   }),
-  "user:left": z.object({
+  userLeft: z.object({
     userId: z.string(),
     username: z.string(),
     timestamp: z.number(),
   }),
-  "message:sent": z.object({
+  messageSent: z.object({
     messageId: z.string(),
     text: z.string(),
     userId: z.string(),
@@ -23,4 +23,4 @@ export const chatSchema = {
 
 export type ChatSchema = typeof chatSchema;
 export type ChatEvents = EventNames<typeof chatSchema>;
-export type Message = EventPayload<typeof chatSchema, "message:sent">;
+export type Message = EventPayload<typeof chatSchema, "messageSent">;
