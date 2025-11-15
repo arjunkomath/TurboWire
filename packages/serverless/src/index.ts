@@ -152,9 +152,12 @@ class TurboWireHubImplementation<T extends SchemaDefinition> {
         "Content-Type": "application/json",
         "x-broadcast-key": this.broadcastKey,
       },
-    }).then((res) => {
+    }).then(async (res) => {
       if (!res.ok) {
-        throw new Error(`Failed to broadcast message: ${res.body}`);
+        const text = await res.text().catch(() => "");
+        throw new Error(
+          `Failed to broadcast message: ${res.status} ${res.statusText}${text}`,
+        );
       }
       return res.json();
     });
