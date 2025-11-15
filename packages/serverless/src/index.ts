@@ -17,7 +17,7 @@ export type EventPayload<
 type EventMethods<T extends SchemaDefinition> = {
   [K in keyof InferSchemaType<T>]: (
     data: InferSchemaType<T>[K],
-  ) => Promise<Response>;
+  ) => Promise<{ message: string }>;
 };
 
 export type TurboWireHub<T extends SchemaDefinition> = {
