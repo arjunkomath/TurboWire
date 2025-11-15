@@ -1,40 +1,98 @@
 # TurboWire Web
 
-This is a helper package to make it easy to work with TurboWire on your frontend.
+Frontend package for real-time messaging with type safety and automatic reconnection.
 
 ## Getting Started
 
 ```bash
-npm install @turbowire/web
+npm install @turbowire/web zod
 ```
 
 ## Usage
 
-### React Example
+### Define your schema
 
-Lets you've a React component that needs to receive notifications. Start by creating a signed wire on the server and passing it to the component. Below is an example of a component that receives messsages from the wire and logs them to the console.
+Share the same schema between frontend and backend:
+
+```ts
+import { z } from "zod";
+
+const schema = {
+  userJoined: z.object({
+    userId: z.string(),
+    name: z.string(),
+  }),
+  chatMessage: z.object({
+    text: z.string(),
+    timestamp: z.number(),
+  }),
+};
+```
+
+### React example
 
 ```tsx
 import { TurboWire } from "@turbowire/web";
+import { useEffect } from "react";
 
-useEffect(() => {
-    let wire: TurboWire | undefined;
+function ChatRoom({ signedWire }) {
+  useEffect(() => {
+    const wire = new TurboWire(signedWire, { schema });
 
-    wire = new TurboWire(signedWire);
-    wire.connect((message) => {
-        console.log(message);
-    });
+    const handleUserJoined = (data) => {
+      console.log(`${data.name} joined`);
+    };
+
+    const handleChatMessage = (data) => {
+      console.log(data.text);
+    };
+
+    wire.on("userJoined", handleUserJoined);
+    wire.on("chatMessage", handleChatMessage);
+    wire.connect();
 
     return () => {
-        wire?.disconnect();
+      wire.off("userJoined", handleUserJoined);
+      wire.off("chatMessage", handleChatMessage);
+      wire.disconnect();
     };
-}, [signedWire, checkNotifications]);
-
+  }, [signedWire]);
+}
 ```
 
-You can also send messages to the wire using the `send` method.
+### Send messages from client
 
-```tsx
-wire.send('message');
+```ts
+wire.emit("chatMessage", {
+  text: "Hello!",
+  timestamp: Date.now(),
+});
 ```
 
+### Remove event handlers
+
+```ts
+const handler = (data) => console.log(data.text);
+
+wire.on('chatMessage', handler);
+wire.off('chatMessage', handler);
+```
+
+To remove all handlers for an event:
+
+```ts
+wire.off('chatMessage');
+```
+
+Events are fully typed and validated at runtime. The connection automatically reconnects if it drops.
+
+### Type helpers
+
+Share types across your app:
+
+```ts
+import type { EventNames, EventPayload } from "@turbowire/web";
+
+type Events = EventNames<typeof schema>;
+type ChatMessagePayload = EventPayload<typeof schema, "chatMessage">;
+```

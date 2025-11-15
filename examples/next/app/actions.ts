@@ -6,12 +6,11 @@ import { turboWireHub } from "@/lib/turbo";
 const room = "demo-chat-room";
 
 export async function getSignedWireUrl() {
-  const signedUrl = turboWireHub.getSignedWire(room);
-  return signedUrl;
+  return turboWireHub.getSignedWire(room);
 }
 
 export async function userJoined(userId: string, username: string) {
-  await turboWireHub.broadcast(room, "user:joined", {
+  await turboWireHub.broadcast(room).userJoined({
     userId,
     username,
     timestamp: Date.now(),
@@ -19,7 +18,7 @@ export async function userJoined(userId: string, username: string) {
 }
 
 export async function userLeft(userId: string, username: string) {
-  await turboWireHub.broadcast(room, "user:left", {
+  await turboWireHub.broadcast(room).userLeft({
     userId,
     username,
     timestamp: Date.now(),
@@ -27,5 +26,5 @@ export async function userLeft(userId: string, username: string) {
 }
 
 export async function broadcastMessage(message: Message) {
-  await turboWireHub.broadcast(room, "message:sent", message);
+  await turboWireHub.broadcast(room).messageSent(message);
 }

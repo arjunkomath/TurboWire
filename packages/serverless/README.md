@@ -1,39 +1,75 @@
 # TurboWire Serverless
 
-This is a helper package to make it easy to work with TurboWire.
+Server-side package for broadcasting messages and creating signed wire connections with type safety.
 
 ## Getting Started
 
 ```bash
-npm install @turbowire/serverless
+npm install @turbowire/serverless zod
 ```
 
-Make sure you've set the following environment variables, or passed them to the constructor:
+Set these environment variables or pass them to the constructor:
 
-- `TURBOWIRE_DOMAIN` - The domain of the TurboWire server, e.g. `wire.managee.xyz`
-- `TURBOWIRE_BROADCAST_KEY` - The broadcast key for the TurboWire server
-- `TURBOWIRE_SIGNING_KEY` - The signing key for the TurboWire server
+- `TURBOWIRE_DOMAIN` - Your TurboWire server domain (e.g. `wire.managee.xyz`)
+- `TURBOWIRE_BROADCAST_KEY` - Broadcast key
+- `TURBOWIRE_SIGNING_KEY` - Signing key
 
 ## Usage
 
-### Create signed wire
+### Define your schema
 
 ```ts
-import { TurboWireHub } from "@turbowire/serverless";
+import { z } from "zod";
 
-const turbowire = new TurboWireHub(process.env.TURBOWIRE_DOMAIN!); // TURBOWIRE_DOMAIN is the domain of the TurboWire server, e.g. wire.managee.xyz
-const wireUrl = turbowire.getSignedWire('room-name');
+const schema = {
+  userJoined: z.object({
+    userId: z.string(),
+    name: z.string(),
+  }),
+  chatMessage: z.object({
+    text: z.string(),
+    timestamp: z.number(),
+  }),
+};
 ```
 
-### Broadcast message
+### Broadcast messages to rooms
 
 ```ts
-import { TurboWireHub } from "@turbowire/serverless";
+import { createTurboWireHub } from "@turbowire/serverless";
 
-const turbowire = new TurboWireHub(process.env.TURBOWIRE_DOMAIN!); // TURBOWIRE_DOMAIN is the domain of the TurboWire server, e.g. wire.managee.xyz
-await turbowire.broadcast('room-name', 'message');
+const hub = createTurboWireHub(process.env.TURBOWIRE_DOMAIN!, {
+  schema,
+});
+
+await hub.broadcast("room-name").userJoined({
+  userId: "123",
+  name: "Alice",
+});
+
+await hub.broadcast("room-name").chatMessage({
+  text: "Hello!",
+  timestamp: Date.now(),
+});
 ```
 
-For full list of options, check function docs.
+Events are fully typed and validated at runtime. TypeScript autocompletes event names and validates payloads, while zod ensures data integrity.
 
+### Create signed wire URLs
 
+```ts
+const wireUrl = hub.getSignedWire("room-name");
+```
+
+Pass this URL to your frontend to establish a connection.
+
+### Type helpers
+
+Extract types from your schema:
+
+```ts
+import type { EventNames, EventPayload } from "@turbowire/serverless";
+
+type Events = EventNames<typeof schema>;
+type UserJoinedPayload = EventPayload<typeof schema, "userJoined">;
+```

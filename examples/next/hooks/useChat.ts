@@ -28,7 +28,7 @@ export function useChat() {
         debug: true,
       });
 
-      wire.on("user:joined", (data) => {
+      wire.on("userJoined", (data) => {
         setMessages((prev) => [
           ...prev,
           {
@@ -41,7 +41,7 @@ export function useChat() {
         ]);
       });
 
-      wire.on("user:left", (data) => {
+      wire.on("userLeft", (data) => {
         setMessages((prev) => [
           ...prev,
           {
@@ -54,7 +54,7 @@ export function useChat() {
         ]);
       });
 
-      wire.on("message:sent", (data) => {
+      wire.on("messageSent", (data) => {
         setMessages((prev) => [...prev, data]);
       });
 
@@ -101,9 +101,9 @@ export function useChat() {
     if (client) {
       void userLeft(userId, username);
 
-      client.off("user:joined");
-      client.off("user:left");
-      client.off("message:sent");
+      client.off("userJoined");
+      client.off("userLeft");
+      client.off("messageSent");
 
       client.disconnect();
       setClient(null);
