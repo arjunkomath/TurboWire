@@ -109,7 +109,12 @@ class TurboWireHubImplementation<T extends SchemaDefinition> {
 
     const target = {};
     return new Proxy(target, {
-      get(_, prop: string | symbol): unknown {
+      get(_, prop: string | symbol) {
+        // filter out symbols before 'in' check
+        if (typeof prop !== "string") {
+          return Reflect.get(target, prop);
+        }
+
         if (prop in self.schema) {
           return (data: InferSchemaType<T>[keyof T]) => {
             const eventName = prop as keyof T;
@@ -126,7 +131,7 @@ class TurboWireHubImplementation<T extends SchemaDefinition> {
     room: string,
     event: K,
     data: InferSchemaType<T>[K],
-  ): Promise<Response> {
+  ): Promise<{ message: string }> {
     const message = { event, data };
 
     if (this.schema[event]) {
