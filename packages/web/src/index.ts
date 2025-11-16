@@ -227,9 +227,9 @@ export class TurboWire<T extends SchemaDefinition> {
         throw new Error(
           `Validation failed for event "${String(event)}": ${validation.error.message}`,
         );
-      } else {
-        message.data = validation.data;
       }
+
+      message.data = validation.data;
     }
 
     if (this.debug) {

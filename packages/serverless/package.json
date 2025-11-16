@@ -1,6 +1,6 @@
 {
   "name": "@turbowire/serverless",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -14,8 +14,10 @@
     "dist"
   ],
   "scripts": {
+    "prebuild": "npm run lint",
     "build": "tsc",
-    "lint": "biome check src/"
+    "prepublishOnly": "npm run build",
+    "lint": "biome lint src/"
   },
   "devDependencies": {
     "@biomejs/biome": "2.0.6",

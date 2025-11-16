@@ -1,6 +1,6 @@
 {
   "name": "@turbowire/web",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "type": "module",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -14,9 +14,10 @@
     "dist"
   ],
   "scripts": {
+    "prebuild": "npm run lint",
     "build": "tsc",
-    "lint": "biome check src/",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "lint": "biome lint src/"
   },
   "devDependencies": {
     "@biomejs/biome": "2.0.6",
