@@ -1,6 +1,6 @@
 {
-  "name": "@turbowire/web",
-  "version": "0.4.0",
+  "name": "@turbowire/react",
+  "version": "0.1.0",
   "type": "module",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -19,11 +19,18 @@
     "prepublishOnly": "npm run build",
     "lint": "biome lint src/"
   },
+  "dependencies": {
+    "@turbowire/web": "^0.4.0"
+  },
   "devDependencies": {
     "@biomejs/biome": "2.0.6",
-    "typescript": "^5.3.3"
+    "@types/react": "^18.3.18",
+    "react": "^18.3.1",
+    "typescript": "^5.3.3",
+    "zod": "^4.1.12"
   },
   "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
     "zod": "^3.0.0 || ^4.0.0"
   },
   "author": "Arjun Komath <arjunkomath@gmail.com>",
