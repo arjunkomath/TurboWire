@@ -1,128 +1,90 @@
-import { TurboWire } from "@turbowire/web";
-import { useMemo, useState } from "react";
+import { useWireEvent } from "@turbowire/react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { v4 } from "uuid";
-import {
-  broadcastMessage,
-  getSignedWireUrl,
-  userJoined,
-  userLeft,
-} from "@/app/actions";
-import { type ChatSchema, chatSchema, type Message } from "@/lib/schema";
+import { broadcastMessage, userJoined, userLeft } from "@/app/actions";
+import { chatSchema, type Message, type UserJoinedPayload } from "@/lib/schema";
 
-export function useChat() {
-  const [client, setClient] = useState<TurboWire<ChatSchema> | null>(null);
-  const [connected, setConnected] = useState(false);
+export function useChat(userId: string, wireUrl: string) {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [username, setUsername] = useState("");
-  const [isJoined, setIsJoined] = useState(false);
 
-  const userId = useMemo(() => v4(), []);
-
-  const joinChat = async () => {
-    if (!username.trim()) return;
-
-    try {
-      const wireUrl = await getSignedWireUrl();
-      const wire = new TurboWire<ChatSchema>(wireUrl, {
-        schema: chatSchema,
-        debug: true,
-      });
-
-      wire.on("userJoined", (data) => {
-        setMessages((prev) => [
-          ...prev,
-          {
-            messageId: v4(),
-            text: `${data.username} joined the chat`,
-            userId: "system",
-            username: "System",
-            timestamp: data.timestamp,
-          },
-        ]);
-      });
-
-      wire.on("userLeft", (data) => {
-        setMessages((prev) => [
-          ...prev,
-          {
-            messageId: v4(),
-            text: `${data.username} left the chat`,
-            userId: "system",
-            username: "System",
-            timestamp: data.timestamp,
-          },
-        ]);
-      });
-
-      wire.on("messageSent", (data) => {
-        setMessages((prev) => [...prev, data]);
-      });
-
-      wire.connect(
-        () => {
-          setConnected(true);
-          setIsJoined(true);
-
-          void userJoined(userId, username);
-        },
-        (error) => {
-          console.error("Connection error:", error);
-          setConnected(false);
-        },
-      );
-
-      setClient(wire);
-    } catch (error) {
+  useEffect(() => {
+    userJoined(userId).catch((error) => {
       alert("Failed to join chat");
       console.error("Failed to join chat:", error);
-    }
-  };
+    });
 
-  const sendMessage = async (text: string) => {
-    if (!text.trim() || !client || !connected) return;
-
-    const message = {
-      messageId: v4(),
-      text,
-      userId: userId,
-      username: username,
-      timestamp: Date.now(),
+    return () => {
+      userLeft(userId).catch((error) => {
+        alert("Failed to leave chat");
+        console.error("Failed to leave chat:", error);
+      });
     };
+  }, [userId]);
 
-    try {
-      void broadcastMessage(message);
-    } catch (error) {
-      alert("Failed to send message");
-      console.error("Failed to send message:", error);
-    }
-  };
+  const handleUserJoined = useCallback((data: UserJoinedPayload) => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        messageId: v4(),
+        text: `${data.userId} joined the chat`,
+        userId: "system",
+        timestamp: data.timestamp,
+      },
+    ]);
+  }, []);
 
-  const leaveChat = () => {
-    if (client) {
-      void userLeft(userId, username);
+  const handleUserLeft = useCallback((data: UserJoinedPayload) => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        messageId: v4(),
+        text: `${data.userId} left the chat`,
+        userId: "system",
+        timestamp: data.timestamp,
+      },
+    ]);
+  }, []);
 
-      client.off("userJoined");
-      client.off("userLeft");
-      client.off("messageSent");
+  const handleMessageSent = useCallback((data: Message) => {
+    setMessages((prev) => [...prev, data]);
+  }, []);
 
-      client.disconnect();
-      setClient(null);
-    }
+  const sendMessage = useCallback(
+    async (text: string) => {
+      if (!text.trim()) return;
 
-    setConnected(false);
-    setIsJoined(false);
-    setMessages([]);
-  };
+      const message = {
+        messageId: v4(),
+        text,
+        userId,
+        timestamp: Date.now(),
+      };
+
+      try {
+        await broadcastMessage(message);
+      } catch (error) {
+        alert("Failed to send message");
+        console.error("Failed to send message:", error);
+      }
+    },
+    [userId],
+  );
+
+  const wireOptions = useMemo(
+    () => ({
+      schema: chatSchema,
+      userJoined: handleUserJoined,
+      userLeft: handleUserLeft,
+      messageSent: handleMessageSent,
+    }),
+    [handleUserJoined, handleUserLeft, handleMessageSent],
+  );
+
+  useWireEvent(wireUrl, wireOptions);
 
   return {
-    connected,
     messages,
-    username,
-    isJoined,
     userId,
-    setUsername,
-    joinChat,
     sendMessage,
-    leaveChat,
   };
 }
