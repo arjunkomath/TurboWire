@@ -15,12 +15,13 @@
   ],
   "scripts": {
     "prebuild": "npm run lint",
-    "build": "tsc",
+    "build": "rimraf dist && tsc",
     "prepublishOnly": "npm run build",
     "lint": "biome lint src/"
   },
   "devDependencies": {
     "@biomejs/biome": "2.0.6",
+    "rimraf": "^6.1.0",
     "typescript": "^5.3.3"
   },
   "peerDependencies": {
