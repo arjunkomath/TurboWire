@@ -1,20 +1,20 @@
-import { broadcastMessage, userJoined, userLeft } from "@/app/actions";
-import { chatSchema, type UserJoinedPayload, type Message } from "@/lib/schema";
 import { useWireEvent } from "@turbowire/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { v4 } from "uuid";
+import { broadcastMessage, userJoined, userLeft } from "@/app/actions";
+import { chatSchema, type Message, type UserJoinedPayload } from "@/lib/schema";
 
 export function useChat(userId: string, wireUrl: string) {
   const [messages, setMessages] = useState<Message[]>([]);
 
   useEffect(() => {
-    void userJoined(userId).catch((error) => {
+    userJoined(userId).catch((error) => {
       alert("Failed to join chat");
       console.error("Failed to join chat:", error);
     });
 
     return () => {
-      void userLeft(userId).catch((error) => {
+      userLeft(userId).catch((error) => {
         alert("Failed to leave chat");
         console.error("Failed to leave chat:", error);
       });
@@ -57,13 +57,6 @@ export function useChat(userId: string, wireUrl: string) {
     ]);
   }, []);
 
-  useWireEvent(wireUrl, {
-    schema: chatSchema,
-    userJoined: handleUserJoined,
-    userLeft: handleUserLeft,
-    messageSent: handleMessageSent,
-  });
-
   const sendMessage = useCallback(
     async (text: string) => {
       if (!text.trim()) return;
@@ -76,7 +69,7 @@ export function useChat(userId: string, wireUrl: string) {
       };
 
       try {
-        void broadcastMessage(message);
+        await broadcastMessage(message);
       } catch (error) {
         alert("Failed to send message");
         console.error("Failed to send message:", error);
@@ -84,6 +77,18 @@ export function useChat(userId: string, wireUrl: string) {
     },
     [userId],
   );
+
+  const wireOptions = useMemo(
+    () => ({
+      schema: chatSchema,
+      userJoined: handleUserJoined,
+      userLeft: handleUserLeft,
+      messageSent: handleMessageSent,
+    }),
+    [handleUserJoined, handleUserLeft, handleMessageSent],
+  );
+
+  useWireEvent(wireUrl, wireOptions);
 
   return {
     messages,
