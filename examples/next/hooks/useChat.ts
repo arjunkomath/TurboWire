@@ -46,15 +46,7 @@ export function useChat(userId: string, wireUrl: string) {
   }, []);
 
   const handleMessageSent = useCallback((data: Message) => {
-    setMessages((prev) => [
-      ...prev,
-      {
-        messageId: v4(),
-        text: data.text,
-        userId: data.userId,
-        timestamp: data.timestamp,
-      },
-    ]);
+    setMessages((prev) => [...prev, data]);
   }, []);
 
   const sendMessage = useCallback(
