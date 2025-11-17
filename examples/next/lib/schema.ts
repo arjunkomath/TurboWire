@@ -23,3 +23,5 @@ export const chatSchema = {
 export type ChatSchema = typeof chatSchema;
 export type ChatEvents = EventNames<typeof chatSchema>;
 export type Message = EventPayload<typeof chatSchema, "messageSent">;
+export type UserJoinedPayload = EventPayload<typeof chatSchema, "userJoined">;
+export type UserLeftPayload = EventPayload<typeof chatSchema, "userLeft">;

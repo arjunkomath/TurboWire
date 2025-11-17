@@ -25,10 +25,11 @@ export function useWireEvent<T extends SchemaDefinition>(
 ): void {
   const turboWireRef = useRef<TurboWire<T> | null>(null);
 
-  useEffect(() => {
-    const { schema, debug, maxRetries, retryInterval, ...eventHandlers } =
-      options;
+  const { schema, debug, maxRetries, retryInterval, ...eventHandlers } =
+    options;
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: avoid unnecessary dependencies
+  useEffect(() => {
     turboWireRef.current = new TurboWire(wireUrl, {
       schema,
       debug,
@@ -46,7 +47,7 @@ export function useWireEvent<T extends SchemaDefinition>(
       const handler = (eventHandlers as Record<string, unknown>)[event];
       if (typeof handler === "function") {
         const typedHandler = handler as (
-          data: InferSchemaType<T>[keyof InferSchemaType<T>]
+          data: InferSchemaType<T>[keyof InferSchemaType<T>],
         ) => void;
         const typedEvent = event as keyof InferSchemaType<T>;
 
@@ -64,5 +65,5 @@ export function useWireEvent<T extends SchemaDefinition>(
       turboWireRef.current?.disconnect();
       turboWireRef.current = null;
     };
-  }, [wireUrl, options]);
+  }, [wireUrl, schema, debug, maxRetries, retryInterval]);
 }
