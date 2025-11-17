@@ -10,8 +10,8 @@
   },
   "dependencies": {
     "@scaleway/random-name": "^5.1.2",
-    "@turbowire/react": "file:../../packages/react",
-    "@turbowire/serverless": "file:../../packages/serverless",
+    "@turbowire/react": "workspace:*",
+    "@turbowire/serverless": "workspace:*",
     "next": "16.0.1",
     "react": "19.2.0",
     "react-dom": "19.2.0",

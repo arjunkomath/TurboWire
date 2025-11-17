@@ -20,7 +20,7 @@
     "lint": "biome lint src/"
   },
   "dependencies": {
-    "@turbowire/web": "^0.4.0"
+    "@turbowire/web": "workspace:*"
   },
   "devDependencies": {
     "@biomejs/biome": "2.0.6",
