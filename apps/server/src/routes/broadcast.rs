@@ -5,6 +5,7 @@ use axum::response::IntoResponse;
 use serde_json::json;
 use std::env;
 use std::sync::Arc;
+use subtle::ConstantTimeEq;
 use tokio::sync::Mutex;
 
 use crate::shared::{AppState, BroadcastMessage};
@@ -23,7 +24,12 @@ pub async fn broadcast_handler(
         panic!("BROADCAST_KEY is not set");
     });
 
-    if api_key != broadcast_key {
+    if api_key
+        .as_bytes()
+        .ct_eq(broadcast_key.as_bytes())
+        .unwrap_u8()
+        == 0
+    {
         return (
             StatusCode::UNAUTHORIZED,
             Json(json!({"message": "Invalid broadcast key"})),
