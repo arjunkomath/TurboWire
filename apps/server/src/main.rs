@@ -5,7 +5,7 @@ use dotenv::dotenv;
 use routes::broadcast::broadcast_handler;
 use routes::health::{health_handler, stats_handler};
 use routes::wire::ws_handler;
-use shared::AppState;
+use shared::{AppState, start_redis_broadcast_subscriber};
 use std::env;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -39,6 +39,8 @@ async fn main() -> Result<()> {
         .init();
 
     let state = Arc::new(Mutex::new(AppState::new()));
+
+    start_redis_broadcast_subscriber(state.clone()).await;
 
     let cors = CorsLayer::new()
         .allow_origin(Any)
@@ -75,7 +77,7 @@ async fn main() -> Result<()> {
     }
 
     if env::var("REDIS_URL").is_ok() {
-        tracing::debug!("Using Redis as message queue");
+        tracing::debug!("Using Redis Pub/Sub for cross-instance broadcasts");
     }
 
     axum::serve(

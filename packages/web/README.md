@@ -84,7 +84,7 @@ To remove all handlers for an event:
 wire.off('chatMessage');
 ```
 
-Events are fully typed and validated at runtime. The connection automatically reconnects if it drops.
+Events are fully typed and validated at runtime. The connection automatically reconnects after unintentional unclean closes. Calling `disconnect()` closes with code `1000` and does not reconnect. Reconnect resumes real-time delivery only; replaying missed messages is the application's responsibility.
 
 ### Type helpers
 

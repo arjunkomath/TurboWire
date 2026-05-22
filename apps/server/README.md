@@ -24,7 +24,7 @@ docker run -d -p 8080:8080 -e BROADCAST_KEY=your_broadcast_key -e SIGNING_KEY=yo
 | `SIGNING_KEY` | The key to use for signing wire | - | Yes |
 | `CONNECTION_LIMIT` | The maximum number of concurrent connections | `1000` | No |
 | `MESSAGE_WEBHOOK_URL` | The URL to send client messages | - | No |
-| `REDIS_URL` | Redis server for message queue | - | No |
+| `REDIS_URL` | Redis server URL for Pub/Sub cross-instance broadcasts | - | No |
 | `HOST` | The host address to listen on | `0.0.0.0` | No |
 | `PORT` | The port to listen on | `8080` | No |
 
@@ -39,6 +39,9 @@ Signature is a cryptographic hash of the room name using HMAC-SHA256 with the si
 
 Endpoint that the server can use to broadcast messages to connected clients.
 Broadcast requests are authenticated using the `BROADCAST_KEY` and need to include a `room` and `message` in the body.
+When `REDIS_URL` is configured, broadcasts are published through Redis Pub/Sub so multiple TurboWire server instances can each deliver the message to their locally connected clients. If Redis is unavailable or no Pub/Sub subscriber is active, the broadcast request returns `503`. Without `REDIS_URL`, broadcasts are delivered only to clients connected to the server instance that receives the request.
+
+TurboWire is a real-time delivery layer only. It does not store messages or replay missed messages on reconnect. Clients should use an application-owned backend, inbox, or sync endpoint to catch up on messages missed while disconnected.
 
 ```curl
 curl --request POST \
@@ -54,7 +57,3 @@ curl --request POST \
 ### GET `/health`
 
 Endpoint that can be used to check the health of the server.
-
-
-
-

@@ -3,7 +3,6 @@ use axum::extract::connect_info::ConnectInfo;
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::{
-    body::Bytes,
     extract::ws::{Message, WebSocket, WebSocketUpgrade},
     response::IntoResponse,
 };
@@ -62,25 +61,11 @@ pub async fn ws_handler(
 
 /// Actual websocket state machine (one will be spawned per connection)
 async fn handle_socket(
-    mut socket: WebSocket,
+    socket: WebSocket,
     who: SocketAddr,
     state: Arc<Mutex<AppState>>,
     room: String,
 ) {
-    // send a ping (unsupported by some browsers) just to kick things off and get a response
-    if socket
-        .send(Message::Ping(Bytes::from_static(&[1])))
-        .await
-        .is_ok()
-    {
-        info!("Pinged {who}...");
-    } else {
-        info!("Could not send ping {who}!");
-        // no Error here since the only thing we can do is to close the connection.
-        // If we can not send messages, there is no way to salvage the statemachine anyway.
-        return;
-    }
-
     let (mut sender, mut receiver) = socket.split();
 
     let (tx, mut rx) = futures::channel::mpsc::unbounded();
@@ -88,7 +73,7 @@ async fn handle_socket(
     {
         let mut state = state.lock().await;
         state.add_client(who, tx);
-        state.join_room(room.clone(), who).await;
+        state.join_room(room.clone(), who);
     }
 
     let mut send_task = tokio::spawn(async move {
@@ -113,8 +98,12 @@ async fn handle_socket(
 
     // Wait for either task to finish
     tokio::select! {
-        _ = (&mut send_task) => receive_task.abort(),
-        _ = (&mut receive_task) => send_task.abort(),
+        _ = (&mut send_task) => {
+            receive_task.abort();
+        },
+        _ = (&mut receive_task) => {
+            send_task.abort();
+        },
     }
 
     let mut state = state.lock().await;

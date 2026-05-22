@@ -143,7 +143,7 @@ export class TurboWire<T extends SchemaDefinition> {
 
       this.ws = undefined;
 
-      if (this.intentionalDisconnect || event.code === 1000) {
+      if (this.intentionalDisconnect) {
         return;
       }
 

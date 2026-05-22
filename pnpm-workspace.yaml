@@ -1,4 +1,7 @@
 packages:
-  - 'packages/*'
-  - 'apps/*'
-  - 'examples/*'
+  - "packages/*"
+  - "apps/*"
+  - "examples/*"
+allowBuilds:
+  sharp: false
+  unrs-resolver: false
