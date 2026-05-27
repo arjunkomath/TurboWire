@@ -8,7 +8,7 @@ use std::sync::Arc;
 use subtle::ConstantTimeEq;
 use tokio::sync::Mutex;
 
-use crate::shared::{AppState, BroadcastMessage, publish_broadcast_to_redis};
+use crate::shared::{AppState, BroadcastMessage, append_broadcast_to_redis_stream};
 
 pub async fn broadcast_handler(
     State(state): State<Arc<Mutex<AppState>>>,
@@ -41,31 +41,21 @@ pub async fn broadcast_handler(
         let state = state.lock().await;
         state
             .redis_client()
-            .map(|redis| (redis, state.instance_id()))
+            .map(|redis| (redis, state.redis_stream_config()))
     };
 
-    if let Some((redis, instance_id)) = redis {
+    if let Some((redis, stream_config)) = redis {
         let redis_payload = payload.clone();
         match tokio::task::spawn_blocking(move || {
-            publish_broadcast_to_redis(&redis, &instance_id, &redis_payload)
+            append_broadcast_to_redis_stream(&redis, stream_config, &redis_payload)
         })
         .await
         {
-            Ok(Ok(0)) => {
-                tracing::error!("Redis broadcast unavailable: no active subscribers");
-                return (
-                    StatusCode::SERVICE_UNAVAILABLE,
-                    Json(json!({"message": "Redis broadcast unavailable"})),
-                )
-                    .into_response();
-            }
             Ok(Ok(_)) => {
-                let state = state.lock().await;
-                state.broadcast_to_local_room(&payload.room, &payload.message);
                 return (StatusCode::OK, Json(json!({"message": "Broadcasted"}))).into_response();
             }
             Ok(Err(error)) => {
-                tracing::error!("Failed to publish broadcast to Redis: {error}");
+                tracing::error!("Failed to append broadcast to Redis stream: {error}");
                 return (
                     StatusCode::SERVICE_UNAVAILABLE,
                     Json(json!({"message": "Redis broadcast unavailable"})),
@@ -73,7 +63,7 @@ pub async fn broadcast_handler(
                     .into_response();
             }
             Err(error) => {
-                tracing::error!("Redis publish task failed: {error}");
+                tracing::error!("Redis stream write task failed: {error}");
                 return (
                     StatusCode::SERVICE_UNAVAILABLE,
                     Json(json!({"message": "Redis broadcast unavailable"})),

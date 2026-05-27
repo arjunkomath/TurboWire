@@ -19,7 +19,9 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use tracing::info;
 
-use crate::shared::{AppState, WsConnectionParams};
+use crate::shared::{
+    AppState, WsConnectionParams, initial_redis_room_stream_id, start_redis_room_reader,
+};
 
 /// The handler for the HTTP request (this gets called when the HTTP request lands at the start
 /// of websocket negotiation). After this completes, the actual switching from HTTP to
@@ -70,10 +72,36 @@ async fn handle_socket(
 
     let (tx, mut rx) = futures::channel::mpsc::unbounded();
 
+    let initial_stream_id = {
+        let redis = {
+            let state = state.lock().await;
+            if state.room_has_clients(&room) {
+                None
+            } else {
+                state.redis_client()
+            }
+        };
+
+        match redis {
+            Some(redis) => Some(initial_redis_room_stream_id(redis, room.clone()).await),
+            None => None,
+        }
+    };
+
     {
-        let mut state = state.lock().await;
-        state.add_client(who, tx);
-        state.join_room(room.clone(), who);
+        let mut app_state = state.lock().await;
+        app_state.add_client(who, tx);
+        let first_client = app_state.join_room(room.clone(), who);
+
+        if first_client && let Some((redis, active)) = app_state.register_room_reader(&room) {
+            start_redis_room_reader(
+                state.clone(),
+                room.clone(),
+                redis,
+                initial_stream_id.unwrap_or_else(|| "$".to_string()),
+                active,
+            );
+        }
     }
 
     let mut send_task = tokio::spawn(async move {

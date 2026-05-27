@@ -1,0 +1,16 @@
+default:
+    just --list
+
+test:
+    cargo test --all-targets
+
+build: clippy
+    cargo build
+
+clippy:
+    cargo clippy --all-targets -- -D warnings
+
+check: clippy test
+
+test-redis redis_url="redis://127.0.0.1:6379":
+    TURBOWIRE_TEST_REDIS_URL="{{redis_url}}" cargo test --all-targets
