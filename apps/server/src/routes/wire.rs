@@ -92,8 +92,13 @@ async fn handle_socket(
         let mut app_state = state.lock().await;
         app_state.add_client(who, tx);
         let first_client = app_state.join_room(room.clone(), who);
+        let reader = if first_client {
+            app_state.register_room_reader(&room)
+        } else {
+            None
+        };
 
-        if first_client && let Some((redis, active)) = app_state.register_room_reader(&room) {
+        if let Some((redis, active)) = reader {
             start_redis_room_reader(
                 state.clone(),
                 room.clone(),

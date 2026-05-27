@@ -1,12 +1,12 @@
 # ---------------------------------------------------
 # 1 - Build Stage
 # ---------------------------------------------------
-FROM rust:1.85 AS build
+FROM rust:1.95 AS build
 
 WORKDIR /usr/src/turbowire-server
 COPY . .
 
-RUN cargo install --path .
+RUN cargo install --locked --path .
 
 # ---------------------------------------------------
 # 2 - Deploy Stage
